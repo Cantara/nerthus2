@@ -48,14 +48,14 @@ pipeline {
                     echo 'deplying the application...'
                     echo "deploying version ${vers}"
                     if (release) {
-                        sh 'curl -v -u $NEXUS_CREDS '+"--upload-file ${outFile}-* https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/${artifactId}/${vers}/${outFile}-*"
-                        sh 'cd probe && curl -v -u $NEXUS_CREDS '+"--upload-file ${outFile}-* https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/${artifactId}/${vers}/${outFile}-*"
+                        sh "find . -name '${outFile}-*' -type f -exec curl -v -u $NEXUS_CREDS --upload-file {} https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/${artifactId}/${vers}/{}  \\;"
+                        sh "cd probe && find . -name '${outFile}-*' -type f -exec curl -v -u $NEXUS_CREDS --upload-file {} https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/${artifactId}/${vers}/{}  \\;"
                     } else {
-                        sh 'curl -v -u $NEXUS_CREDS '+"--upload-file ${outFile}-* https://mvnrepo.cantara.no/content/repositories/snapshots/no/cantara/gotools/${artifactId}/${vers}/${outFile}-*"
-                        sh 'cd probe && curl -v -u $NEXUS_CREDS '+"--upload-file ${outFile}-* https://mvnrepo.cantara.no/content/repositories/snapshots/no/cantara/gotools/${artifactId}/${vers}/${outFile}-*"
+                        sh "find . -name '${outFile}-*' -type f -exec curl -v -u $NEXUS_CREDS --upload-file {} https://mvnrepo.cantara.no/content/repositories/snapshots/no/cantara/gotools/${artifactId}/${vers}/${}  \\;"
+                        sh "cd probe && find . -name '${outFile}-*' -type f -exec curl -v -u $NEXUS_CREDS --upload-file {} https://mvnrepo.cantara.no/content/repositories/snapshots/no/cantara/gotools/${artifactId}/${vers}/{}  \\;"
                     }
-                    sh "rm ${outFile}"
-                    sh "rm -r frontend/npm"
+                    sh "rm ${outFile}-*"
+                    sh "cd probe && rm ${outFile}-*"
                 }
             }
         }
