@@ -9,6 +9,7 @@ import (
 	log "github.com/cantara/bragi"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	//jsoniter "github.com/json-iterator/go"
 	"go/types"
@@ -315,6 +316,9 @@ func versionFromLink(ext string) (ver string, err error) {
 		return
 	}
 	name := filepath.Base(link)
-	ver = strings.ReplaceAll(strings.ReplaceAll(name, ext, ""), artifactID+"-", "")
+	name = strings.ReplaceAll(name, ext, "")
+	name = strings.ReplaceAll(name, "-"+runtime.GOARCH, "")
+	name = strings.ReplaceAll(name, "-"+runtime.GOOS, "")
+	ver = strings.ReplaceAll(name, artifactID+"-", "")
 	return
 }
