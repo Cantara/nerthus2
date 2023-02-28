@@ -1,52 +1,62 @@
 ---
-- name: Service configuration
+- name: Create resources in Tokyo region
   hosts: localhost
   connection: local
+  gather_facts: no
   vars:
-    visuale: "https://visuale.cantara.no/api/status/"
-    host: "cantara-lab-tokyo-wamper-1"
-    env: "Tokyo_LAB"
-    service: "wamper"
-    zone: "lab.cantara.infra"
-    service_type: "A2A"
-    service_tag: "SoftwareFactory"
-    buri_base_version: "0.3.5"
-    webserver_port: 3030
-    debug_port: 6060
+    region: ap-northeast-1
+    ami: ami-0bba69335379e17f8 #"ami-0bba69335379e17f8"
+    instance_size: t3.micro #t4g.nano #t3.small
+    cidr_base: 10.100.0
+    service: wamper
+    system: cantara-lab
+    zone: lab.cantara.infra
+    security_group_rules: []
   tasks:
-    - name: Set service cron file
+    - set_fact:
+        vpc_cidr: "{{ cidr_base }}.0/24"
+        subnets:
+          - { name: "{{ system }}-subnet-1", az: "{{ region }}a", cidr: "{{ cidr_base }}.0/26" }
+          - { name: "{{ system }}-subnet-2", az: "{{ region }}c", cidr: "{{ cidr_base }}.64/26" }
+          - { name: "{{ system }}-subnet-3", az: "{{ region }}d", cidr: "{{ cidr_base }}.128/26" }
+        instances:
+          - { name: "{{ system }}-{{ service }}-1", ami: "{{ ami }}" }
+          - { name: "{{ system }}-{{ service }}-2", ami: "{{ ami }}" }
+          - { name: "{{ system }}-{{ service }}-3", ami: "{{ ami }}" }
+        key_name: "{{ system }}-key"
+        vpc_name: "{{ system }}-vpc"
+        lb_name: "{{ system }}-lb"
+        security_group_name: "{{ system }}-{{ service }}-sg"
+        target_group_name: "{{ system }}-{{ service }}-tg"
+    - set_fact:
+        security_group_rules_base:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: all
+            group_name: "{{ security_group_name }}"
+    - name: Create key pair
+      ec2_key:
+        name: "{{ key_name }}"
+        region: "{{ region }}"
+        key_type: "ed25519"
+        state: present
+      register: key_pair
+    - name: check if key file exists
+      stat:
+        path: "{{ key_name }}.pem"
+      register: keyfile
+    - name: Copy private key to local machine
       copy:
-        content: |
-          MAILTO=""
-          */6 * * * * ./buri -a buri -g no/cantara/gotools > /dev/null
-          */6 * * * * ./buri -a "{{ service }}" -g no/cantara/gotools -r > /dev/null
-          * * * * * ./scripts/reportServiceHealthToVisuale.sh > /dev/null
-        dest: "/home/{{ service }}/CRON"
-    - name: Remove cronjob from crontab scheduler
-      shell: crontab -r
-    - name: Configure cronjob via crontab scheduler
-      shell: "crontab /home/{{ service }}/CRON"
-    - name: Listing cronjobs via crontab scheduler
-      shell: crontab -l
-    - name: Set env file
-      copy:
-        content: |
-          webserver.port={{ webserver_port }}
-          debug.port={{ debug_server }}
-
-          inmem=false
-
-          debug.user=labDebug
-          debug.pass=syuperDebugLab
-
-          screenshot.key=MgqHE2qIgboCKxgavuH/n1i36ddzkVRHTnsoGlM+IBI=
-          screenshot.service.key=NkyQQ5mjRTTZq6e3c2vkv+JVWmgJAvjddtffYLDJWXM=
-          slack.service.key=10igBbnXQymZ5lhLopBGeJNO+RO7MzBlrtnY3TgnvTY=
-          authkey=b3+6ErSirqLVSrRI7pBS/VHqaCza8TtQOl5g1Lg/PYM=
-        dest: "/home/{{ service }}/.env"
-
-
-
+        content: "{{ key_pair.key.private_key }}"
+        dest: "{{ key_name }}.pem"
+      when: keyfile.stat.exists == false
+    - name: Set permissions on private key
+      file:
+        path: "{{ key_name }}.pem"
+        mode: 0600
+      when: keyfile.stat.exists == false
     - name: Create VPC
       ec2_vpc_net:
         name: "{{ vpc_name }}"
@@ -84,6 +94,7 @@
       register: igw_result
     - name: Gather information about any VPC route table within VPC with ID vpc-abcdef00
       amazon.aws.ec2_vpc_route_table_info:
+        region: "{{ region }}"
         filters:
           vpc-id: "{{ vpc.vpc.id }}"
       register: route_info
@@ -92,12 +103,12 @@
         msg: "{{ route_info }}"
     - name: Create gateway route table
       amazon.aws.ec2_vpc_route_table:
+        region: "{{ region }}"
         vpc_id: "{{ vpc.vpc.id }}"
         lookup: id
         route_table_id: "{{ route_info.route_tables[0].id }}"
         tags:
           Name: Gateway route table
-        #gateway_id: "{{ igw_result.gateway_id }}"
         routes:
           - dest: 0.0.0.0/0
             gateway_id: "{{ igw_result.gateway_id }}"
@@ -109,13 +120,7 @@
         description: "Security group for instances"
         vpc_id: "{{ vpc.vpc.id }}"
         region: "{{ region }}"
-        rules:
-          - proto: tcp
-            from_port: 22
-            to_port: 22
-            cidr_ip: 0.0.0.0/0
-          - proto: all
-            group_name: "{{ security_group_name }}"
+        rules: "{{ security_group_rules_base + security_group_rules }}"
         state: present
       register: security_group
     - name: Create a private zone
@@ -126,6 +131,7 @@
         comment: DNS for wamper lab cantara
     - name: Gather Facts to check if a similar instance is running
       ec2_instance_info:
+        region: "{{ region }}"
         filters:
           "tag:Name": "{{ item.name }}"
       register: ec2_exists
@@ -162,7 +168,7 @@
         key_name: "{{ key_name }}"
         security_group: "{{ security_group_name }}"
         count: 1
-        instance_type: t3.small #t4g.nano #t3.micro
+        instance_type: "{{ instance_size }}"
         image_id: "{{ item.ami }}"
         region: "{{ region }}"
         vpc_subnet_id: "{{ subnets.results[index].subnet.id }}"
@@ -178,112 +184,10 @@
         state: started
         wait: true
         user_data: |
-          #!/bin/env sh
-          yum install -y ansible > /dev/null
-          
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
-          yum localinstall -y google-chrome-stable_current_x86_64.rpm
-          rm google-chrome-stable_current_x86_64.rpm
-          
+          #!/bin/system sh
           amazon-linux-extras enable ansible2
-          yum install -y docker > /dev/null
-          systemctl start docker
-          systemctl enable docker
-          #sleep 15s
-          addr=$(hostname -I | cut -f1 -d' ')
-          docker run -d --restart=always --name eventstore -p 2113:2113 -p 1113:1113 -p 1112:1112 eventstore/eventstore:latest --insecure --cluster-size=3 --cluster-dns={{ service }}.{{ zone }} --int-ip=0.0.0.0 --int-host-advertise-as=$addr --ext-ip=0.0.0.0 --ext-host-advertise-as=$addr
-          #docker run -d --restart=always --name eventstore -p 2113:2113 -p 1113:1113 eventstore/eventstore:latest --insecure --cluster-size=3 --cluster-dns=wamper.lab.cantara.infra --run-projections=All --node-priority={{ index+1 }} --node-priority={{ index+1 }} --advertise-host-to-client-as=$addr
-          #docker run -d --restart=always --name eventstore -p 2113:2113 -p 1113:1113 ghcr.io/eventstore/eventstore:20.6.1-alpha.0.69-arm64v8 --insecure --cluster-size=3 --cluster-dns=wamper.lab.cantara.infra --gossip-allowed-difference-ms=6000000 --gossip-timeout-ms=250000 --leader-election-timeout-ms=1000000
-          usermod -a -G docker ec2-user
-          
-          adduser wamper
-
-          cd /home/ec2-user
-          cat <<'EOF' > ./CRON
-          MAILTO=""
-          */30 * * * * sudo yum update -y > /dev/null
-          0 3 * * 6 sudo reboot
-          EOF
-          chown ec2-user CRON
-          chgrp ec2-user CRON
-
-          sudo -u ec2-user crontab ./CRON
-          
-          cat <<'EOF' > su_to_wamper.sh
-          #!/bin/env sh
-          sudo su - wamper
-          EOF
-
-          chmod +x su_to_wamper.sh
-          chown ec2-user su_to_wamper.sh
-          chgrp ec2-user su_to_wamper.sh
-          
-          #exit
-          # Switch to user
-          #./su_to_wamper.sh
-          
-          cd /home/wamper
-          
-          cat <<'SCREOF' > ./createWamper.sh
-          mkdir eventmap
-
-          # Install semantic-versioning and visuale
-          curl -s "https://raw.githubusercontent.com/Cantara/visuale/master/agent/scripts/download_and_setup_visuale_reporting.sh" | bash -s
-
-          rm ~/scripts/*_template
-
-          cat <<'EOF' > ~/scripts/reportServiceHealthToVisuale.properties
-          healthUrl=http://localhost:13030/wamper/health
-          reportToUrl1='https://visuale.cantara.no/api/status/Tokyo_LAB/Wamper/cantara-lab-tokyo-wamper-{{ index +1 }}?service_tag=SoftwareFactory&service_type=A2A'
-          #reportToUrl2='https://visuale.cantara.no/api/status/Tokyo_LAB/Wamper/cantara-lab-tokyo-wamper-{{ index +1 }}?service_tag=SoftwareFactory&service_type=A2A'
-          EOF
-
-          cat <<'EOF' > ~/scripts/CRON
-          MAILTO=""
-          */6 * * * * ./buri -a buri -g no/cantara/gotools > /dev/null
-          */6 * * * * ./buri -a wamper -g no/cantara/gotools -r > /dev/null
-          * * * * * ./health-probe -r "https://visuale.quadim.ai/api/status/eXOR/Eventstore/exoreaction-lab-eventstore-{{ index +1 }}?service_tag=EventServices&service_type=A2A" -h "http://localhost:13030/wamper/health" -t "go" > /dev/null &
-          #* * * * * ./scripts/reportServiceHealthToVisuale.sh > /dev/null
-          EOF
-
-          ln -s scripts/CRON CRON
-
-          crontab ~/CRON
-
-          curl --fail --show-error --silent -o "buri-v0.3.5" "https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/buri/v0.3.5/buri-v0.3.5"
-          ln -s "buri-v0.3.5" "buri"
-          chmod +x "buri"
-
-          cat <<'EOF' > ~/.env
-          webserver.port=13030
-          debug.port=6060
-          
-          eventstore.host=eventstore.{{ zone }}
-
-          debug.user=labDebug
-          debug.pass=syuperDebugLab
-
-          screenshot.key=MgqHE2qIgboCKxgavuH/n1i36ddzkVRHTnsoGlM+IBI=
-          screenshot.service.key=NkyQQ5mjRTTZq6e3c2vkv+JVWmgJAvjddtffYLDJWXM=
-          slack.service.key=10igBbnXQymZ5lhLopBGeJNO+RO7MzBlrtnY3TgnvTY=
-          authkey=b3+6ErSirqLVSrRI7pBS/VHqaCza8TtQOl5g1Lg/PYM=
-          EOF
-
-          ./buri -a buri -g no/cantara/gotools
-          ./buri -a wamper -g no/cantara/gotools -r
-
-          # Clear history which contains passwords and secrets
-          echo '' > ~/.bash_history
-          history -c
-          exit
-          
-          SCREOF
-          chown wamper createWamper.sh
-          chgrp wamper createWamper.sh
-          chmod +x createWamper.sh
-          
-          sudo -u ./createWamper.sh
-      #register: _alias_vc_0
+          yum install -y ansible > /dev/null
+          ansible-galaxy collection install community.docker > /dev/null
       register: instances
       async: 3600
       poll: 0

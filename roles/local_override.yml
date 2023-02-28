@@ -1,0 +1,13 @@
+name: Set local_override.properties
+dependencies:
+  - role: user
+vars:
+  service:
+  local_override_content:
+tasks:
+  - name: Set env file
+    copy:
+      content: "{{ local_override_content }}"
+      dest: "/home/{{ service }}/local_override.properties"
+    become: yes
+    become_user: "{{ service }}"

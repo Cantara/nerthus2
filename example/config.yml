@@ -1,0 +1,23 @@
+name: nerthus2
+env: example
+vars:
+  ami: ami-0bba69335379e17f8
+  instance_size: t3.micro
+  cidr_base: 10.200.0
+  zone: nerthus2.example.infra
+  visuale_host: visuale.cantara.no
+  service_tag: Nerthus2 Example
+services:
+  - name: wamper
+    git: github.com/Cantara/wamper
+    branch: main
+    vars:
+      webserver_port: 13030
+    override: #Overrides dependencies
+      eventstore: services/eventstore #In this case overrides local installation with deployed service
+  - name: eventstore
+    vars:
+      instance_size: t3.small
+    expose:
+      - 2113
+    playbook: eventstore

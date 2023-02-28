@@ -1,0 +1,37 @@
+name: Add service User
+dependencies:
+  - role: user
+vars:
+  service:
+  buri_base_version: 0.7.0
+  os: linux
+tasks:
+  - set_fact:
+      arch: "amd64"
+    when: ansible_architecture == "x86_64"
+  - set_fact:
+      arch: "arm64"
+    when: ansible_architecture == "aarch64"
+  - set_fact:
+      os: "darwin"
+    when: ansible_facts['os_family'] == "Darwin"
+  - name: Check if buri exists
+    stat:
+      path: "/home/{{ service }}/buri"
+    become: yes
+    become_user: "{{ service }}"
+    register: buri
+  - block:
+    - name: Download buri
+      ansible.builtin.get_url:
+        url: "https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/buri/v{{ buri_base_version }}/buri-v{{ buri_base_version }}-{{ os }}-{{ arch }}"
+        dest: "/home/{{ service }}/"
+      register: buri_new
+    - name: Create symbolic link for buri
+      file:
+        src: "{{ buri_new.dest }}"
+        dest: "/home/{{ service }}/buri"
+        state: link
+    become: yes
+    become_user: "{{ service }}"
+    when: buri.stat.exists == false

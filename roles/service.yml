@@ -1,0 +1,6 @@
+name: Add service
+dependencies:
+  - role: user
+  - role: buri
+  - role: cron
+  - role: service_cron

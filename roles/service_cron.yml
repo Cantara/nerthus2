@@ -1,0 +1,32 @@
+name: Set service CRON
+dependencies:
+  - role: user
+vars:
+  service:
+  webserver_port:
+  env:
+  visuale_host:
+  service_tag:
+  service_type:
+  health_type:
+  host:
+tasks:
+  - set_fact:
+      visuale: "https://{{ visuale_host }}/api/status/{{ env }}/{{ service | capitalize }}/{{ host }}?service_tag={{ service_tag }}&service_type={{ service_type }}"
+  - block:
+    - name: Set service cron file
+      copy:
+        content: |
+          MAILTO=""
+          */6 * * * * ./buri -a buri -g no/cantara/gotools > /dev/null
+          */6 * * * * ./buri -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
+          */6 * * * * ./buri -a {{ service }} -g no/cantara/gotools -r > /dev/null
+          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}/{{ service }}/health" -a "{{ service }}" -t "{{ health_type }}" > /dev/null &
+        dest: "/home/{{ service }}/CRON"
+    - name: Remove cronjob from crontab scheduler
+      shell: crontab -r
+      ignore_errors: true
+    - name: Configure cronjob via crontab scheduler
+      shell: "crontab /home/{{ service }}/CRON"
+    become: yes
+    become_user: "{{ service }}"

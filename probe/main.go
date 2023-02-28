@@ -2,323 +2,170 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"flag"
-	"fmt"
-	log "github.com/cantara/bragi"
-	"os"
-	"path/filepath"
-	"runtime"
-
-	//jsoniter "github.com/json-iterator/go"
-	"go/types"
+	"context"
+	"github.com/apenella/go-ansible/pkg/execute"
+	"github.com/apenella/go-ansible/pkg/playbook"
+	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
+	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/gober/webserver"
+	"github.com/cantara/gober/websocket"
+	"github.com/cantara/nerthus2/message"
+	jsoniter "github.com/json-iterator/go"
 	"io"
-	"net"
-	"net/http"
 	"net/url"
-	"strings"
-	"time"
+	"os"
+	"reflect"
+	"strconv"
+	"sync"
 )
 
-//var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
-var duration time.Duration
-var interval time.Duration
-var reportURLString string
-var healthURLString string
-var serviceTypeSelectedString string
-var artifactID string
-
-func init() {
-	const (
-		defaultDuration    = time.Minute
-		durationUsage      = "duration to run"
-		defaultInterval    = time.Second * 5
-		intervalUsage      = "interval between health checks"
-		defaultReportURL   = ""
-		reportURLUsage     = "url to report health to ex: https://visuale.cantara.no/api/status/ENV/NAME/host_undefined?service_tag=undefined&service_type=A2A"
-		defaultHealthURL   = "http://localhost:3030/health"
-		healthURLUsage     = "url to get health from"
-		defaultServiceType = string(defaultST)
-		serviceTypeUsage   = "type of service to probe. default, java, jar, go, eventstore, es"
-		defaultArtifactID  = ""
-		artifactIDUsage    = "artifact to probe health from"
-	)
-	flag.DurationVar(&duration, "duration", defaultDuration, durationUsage)
-	flag.DurationVar(&duration, "d", defaultDuration, durationUsage+" (shorthand)")
-	flag.DurationVar(&interval, "interval", defaultInterval, intervalUsage)
-	flag.DurationVar(&interval, "i", defaultInterval, intervalUsage+" (shorthand)")
-	flag.StringVar(&reportURLString, "report-url", defaultReportURL, reportURLUsage)
-	flag.StringVar(&reportURLString, "r", defaultReportURL, reportURLUsage+" (shorthand)")
-	flag.StringVar(&healthURLString, "health-url", defaultHealthURL, healthURLUsage)
-	flag.StringVar(&healthURLString, "h", defaultHealthURL, healthURLUsage+" (shorthand)")
-	flag.StringVar(&serviceTypeSelectedString, "service-type", defaultServiceType, serviceTypeUsage)
-	flag.StringVar(&serviceTypeSelectedString, "t", defaultServiceType, serviceTypeUsage+" (shorthand)")
-	flag.StringVar(&artifactID, "artifact-id", defaultArtifactID, artifactIDUsage)
-	flag.StringVar(&artifactID, "a", defaultArtifactID, artifactIDUsage+" (shorthand)")
-}
-
-var version string
+var json = jsoniter.ConfigFastest
 
 func main() {
-	flag.Parse()
-	reportURL, err := url.ParseRequestURI(reportURLString)
+	portString := os.Getenv("webserver.port")
+	port, err := strconv.Atoi(portString)
 	if err != nil {
-		log.AddError(err).Fatal("report url has to be a valid url")
+		log.WithError(err).Fatal("while getting webserver port")
+	}
+	serv, err := webserver.Init(uint16(port))
+	if err != nil {
+		log.WithError(err).Fatal("while initializing webserver")
+	}
+	NerthusConnector(context.Background())
+	serv.Run()
+}
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
+
+type AnsibleTaskStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+type AnsibleAction struct {
+	Playbook  string                   `json:"playbook"`
+	ExtraVars map[string]string        `json:"extra_vars"`
+	Results   chan<- AnsibleTaskStatus `json:"results"`
+}
+
+func AnsibleExecutor(action AnsibleAction) {
+	defer close(action.Results)
+	buff := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buff)
+	f, err := os.CreateTemp("./", "playbook-*.yml")
+	if err != nil {
+		log.WithError(err).Fatal("unable to create tmp file for playbook")
+	}
+	defer os.Remove(f.Name())
+	_, err = f.WriteString(action.Playbook)
+	if err != nil {
+		log.WithError(err).Fatal("unable to write tmp playbook")
+	}
+
+	exec := execute.NewDefaultExecute(
+		execute.WithWrite(io.Writer(buff)),
+	)
+
+	extraVarsConv := make(map[string]any)
+	for k, v := range action.ExtraVars {
+		extraVarsConv[k] = v
+	}
+
+	ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+		ExtraVars: extraVarsConv,
+	}
+
+	pb := &playbook.AnsiblePlaybookCmd{
+		Playbooks:      []string{f.Name()},
+		Exec:           exec,
+		StdoutCallback: "json",
+		Options:        ansiblePlaybookOptions,
+	}
+
+	err = pb.Run(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("while running ansible playbook")
 		return
 	}
-	healthURL, err := url.ParseRequestURI(healthURLString)
+
+	res, err := results.ParseJSONResultsStream(io.Reader(buff))
 	if err != nil {
-		log.AddError(err).Fatal("report url has to be a valid url")
-		return
+		panic(err)
 	}
-	serviceTypeSelected, err := serviceTypeFromString(serviceTypeSelectedString)
-	if err != nil {
-		log.AddError(err).Fatal("service type has to be a valid service type")
-		return
-	}
-	endTime := time.Now().Add(duration)
-	t := time.NewTicker(interval)
-	switch serviceTypeSelected {
-	case eventstoreST:
-		version = "22.10"
-	case javaST:
-		version, err = versionFromLink(".jar")
-		if err != nil {
-			log.AddError(err).Fatal("while getting version of artifact")
-			return
-		}
-	case goST:
-		version, err = versionFromLink("")
-		if err != nil {
-			log.AddError(err).Fatal("while getting version of artifact")
-			return
-		}
-	}
-	for endTime.After(time.Now()) {
-		select {
-		case <-t.C:
-			var status any
-			switch serviceTypeSelected {
-			case eventstoreST:
-				status, err = EventStoreStatus(healthURL)
-			default:
-				status, err = DefaultStatus(healthURL)
-			}
-			if err != nil {
-				log.AddError(err).Error("while reading status")
-				err = Put[baseStatus, types.Nil](reportURL, &baseStatus{
-					Status:  "FAIL",
-					Name:    "",
-					Version: version,
-					IP:      GetOutboundIP(),
-					Now:     time.Now(),
-				}, nil)
-				if err != nil {
-					log.AddError(err).Crit("while posting status")
-					continue
+
+	for _, play := range res.Plays {
+		for _, task := range play.Tasks {
+			for _, content := range task.Hosts {
+				//log.Info(task.Task.Name, "content", content)
+				status := "Finished"
+				if content.Changed {
+					status = "Changed"
+				} else if content.Failed {
+					status = "Failed"
+				} else if content.Skipped {
+					status = "Skipped: " + content.SkipReason
 				}
-				continue
+				action.Results <- AnsibleTaskStatus{
+					Name:   task.Task.Name,
+					Status: status,
+				}
 			}
-			err = Put[any, types.Nil](reportURL, &status, nil)
+		}
+	}
+}
+
+func ActionHandler(action message.Action) (resp message.Response) {
+	switch action.Action {
+	case message.RoleUpdate:
+	case message.Playbook:
+		result := make(chan AnsibleTaskStatus)
+		go func() {
+			for status := range result {
+				log.Info(status.Name, "status", status.Status)
+			}
+		}()
+		AnsibleExecutor(AnsibleAction{
+			Playbook:  action.AnsiblePlaybook,
+			ExtraVars: action.ExtraVars,
+			Results:   result,
+		})
+	}
+	return
+}
+
+func NerthusConnector(ctx context.Context) {
+	u, err := url.Parse("ws://" + os.Getenv("nerthus.url") + "/probe/testHost")
+	if err != nil {
+		log.WithError(err).Fatal("while parsing url to nerthus", "url", os.Getenv("nerthus.url"))
+	}
+
+	reader, writer, err := websocket.Dial[message.Action](u, ctx)
+	if err != nil {
+		log.WithError(err).Fatal("while connecting to nerthus", "url", u.String())
+	}
+	defer close(writer)
+	for action := range reader {
+		resp := ActionHandler(action)
+		action.Response = &resp
+
+		errChan := make(chan error, 1)
+		select {
+		case <-ctx.Done():
+			return
+		case writer <- websocket.Write[message.Action]{
+			Data: action,
+			Err:  errChan,
+		}:
+			err := <-errChan
 			if err != nil {
-				log.AddError(err).Crit("while posting status")
+				log.WithError(err).Error("unable to write response to nerthus", "response", resp, "action", action,
+					"url", u.String(), "response_type", reflect.TypeOf(resp), "action_type", reflect.TypeOf(action))
 				continue
 			}
-			fmt.Println(status)
 		}
 	}
-}
-
-func EventStoreStatus(healthURL *url.URL) (out any, err error) {
-	healthURL.Path = "/stats"
-	var status map[string]interface{}
-	err = Get(healthURL, &status)
-	if err != nil {
-		return
-	}
-	var since time.Time
-	since, err = time.Parse("2006-01-02T15:04:05Z", status["proc"].(map[string]interface{})["startTime"].(string))
-	if err != nil {
-		return
-	}
-	healthURL.Path = "/gossip"
-	var goss gossip
-	err = Get(healthURL, &goss)
-	if err != nil {
-		return
-	}
-	out = eventstoreStatus{
-		baseStatus: baseStatus{
-			Status:       "UP",
-			Name:         "eventstore",
-			Version:      version,
-			IP:           GetOutboundIP(),
-			Now:          time.Now(),
-			RunningSince: &since,
-		},
-		NodesInCluster: uint(len(goss.Members)),
-		Gossip:         goss,
-	}
-	return
-}
-
-func DefaultStatus(healthURL *url.URL) (out any, err error) {
-	err = Get(healthURL, &out)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func Put[I, O any](uri *url.URL, data *I, out *O) (err error) {
-	jsonValue, err := json.Marshal(data)
-	if err != nil {
-		return
-	}
-	log.Println(string(jsonValue))
-	client := &http.Client{}
-	log.Println("Posting health to: ", uri.String())
-	req, err := http.NewRequest("PUT", uri.String(), bytes.NewBuffer(jsonValue))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	fmt.Println(resp)
-	if err != nil || out == nil {
-		return err
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			log.AddError(err).Error("while closing response body")
-		}
-	}()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(body, out)
-	if err != nil {
-		log.AddError(err).Warning(fmt.Sprintf("%s\t%v", body, data))
-	}
-
-	return
-}
-
-func Get[O any](uri *url.URL, out *O) (err error) {
-	client := &http.Client{}
-	log.Println("Getting health at: ", uri.String())
-	req, err := http.NewRequest("GET", uri.String(), nil)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil || out == nil {
-		return
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			log.AddError(err).Error("while closing response body")
-		}
-	}()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(body, out)
-	if err != nil {
-		log.AddError(err).Warning(body)
-	}
-	return
-}
-
-type baseStatus struct {
-	Status       string     `json:"status"`
-	Name         string     `json:"name"`
-	Version      string     `json:"version"`
-	IP           net.IP     `json:"ip"`
-	Now          time.Time  `json:"now"`
-	RunningSince *time.Time `json:"running_since,omitempty"`
-}
-
-type eventstoreStatus struct {
-	baseStatus
-
-	NodesInCluster uint   `json:"nodesInCluster"`
-	Gossip         gossip `json:"gossip"`
-}
-
-var ip net.IP
-
-func GetOutboundIP() net.IP {
-	if ip != nil {
-		return ip
-	}
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	ip = localAddr.IP
-
-	return ip
-}
-
-const (
-	defaultST    = serviceType("default")
-	javaST       = serviceType("java")
-	goST         = serviceType("go")
-	eventstoreST = serviceType("eventstore")
-)
-
-type serviceType string
-
-func (s *serviceType) String() string {
-	return fmt.Sprint(*s)
-}
-
-func serviceTypeFromString(s string) (st serviceType, err error) {
-	switch strings.ToLower(s) {
-	case "java":
-		st = javaST
-	case "jar":
-		st = javaST
-	case "go":
-		st = goST
-	case "eventstore":
-		st = eventstoreST
-	case "es":
-		st = eventstoreST
-	default:
-		err = errors.New("unsuported service type")
-	}
-	return
-}
-
-type gossip struct {
-	Members []struct {
-		InstanceId        string    `json:"instanceId"`
-		TimeStamp         time.Time `json:"timeStamp"`
-		State             string    `json:"state"`
-		IsAlive           bool      `json:"isAlive"`
-		HttpEndPointIp    string    `json:"httpEndPointIp"`
-		HttpEndPointPort  int       `json:"httpEndPointPort"`
-		IsReadOnlyReplica bool      `json:"isReadOnlyReplica"`
-	} `json:"members"`
-	ServerIp   string `json:"serverIp"`
-	ServerPort int    `json:"serverPort"`
-}
-
-func versionFromLink(ext string) (ver string, err error) {
-	link, err := os.Readlink(artifactID + ext)
-	if err != nil {
-		return
-	}
-	name := filepath.Base(link)
-	name = strings.ReplaceAll(name, ext, "")
-	name = strings.ReplaceAll(name, "-"+runtime.GOARCH, "")
-	name = strings.ReplaceAll(name, "-"+runtime.GOOS, "")
-	ver = strings.ReplaceAll(name, artifactID+"-", "")
-	return
 }

@@ -1,0 +1,11 @@
+name: Add service User
+vars:
+  service:
+tasks:
+  - name: Add service user {{ service }}
+    ansible.builtin.user:
+      name: "{{ service }}"
+      comment: "User for {{ service }}"
+      home: "/home/{{ service }}"
+    become: yes
+    become_user: root

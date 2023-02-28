@@ -1,0 +1,19 @@
+name: Set server CRON
+dependencies:
+  - role: buri
+vars:
+  server_number:
+tasks:
+  - block:
+    - name: Set service cron file
+      copy:
+        content: |
+          MAILTO=""
+          {{ server_number%3*10 }},{{ server_number%3*10+30 }} * * * * sudo yum update -y > /dev/null
+          0 {{ 3+server_number }} * * 6 sudo reboot
+        dest: ~/CRON
+    - name: Remove cronjob from crontab scheduler
+      shell: crontab -r
+      ignore_errors: true
+    - name: Configure cronjob via crontab scheduler
+      shell: crontab ~/CRON
