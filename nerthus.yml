@@ -1,0 +1,10 @@
+name: Nerthus
+service_type: H2A
+health_type: go
+dependencies:
+  - service
+requirements:
+  ram: 1GB
+  disk: 5GB
+  cpu: 1
+  properties: .env

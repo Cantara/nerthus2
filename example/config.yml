@@ -8,6 +8,11 @@ vars:
   visuale_host: visuale.cantara.no
   service_tag: Nerthus2 Example
 services:
+  - name: nerthus
+    git: github.com/Cantara/nerthus2
+    branch: main
+    vars:
+      webserver_port: 13030
   - name: wamper
     git: github.com/Cantara/wamper
     branch: main
