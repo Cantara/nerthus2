@@ -70,22 +70,36 @@ func main() {
 		log.WithError(err).Fatal("while unmarshalling example config file")
 	}
 	for i, serv := range sys.Services {
-		if serv.Git == "" {
+		if serv.Git == "" && serv.Local == "" {
 			continue
 		}
-		if serv.Branch == "" {
+		if serv.Git != "" && serv.Branch == "" {
 			log.Fatal("missing branch when getting from git", "service", serv)
 			continue //Only in case fatal gets changed to error
 		}
-		u, err := url.Parse(fmt.Sprintf("https://%s/%s/nerthus.yml", strings.ReplaceAll(serv.Git, "github", "raw.githubusercontent"), serv.Branch))
-		if err != nil {
-			log.WithError(err).Fatal("while creating url for service info")
-			continue
-		}
-		serviceInfo, err := GetService(u)
-		if err != nil {
-			log.WithError(err).Fatal("while getting service info from git", "url", u.String())
-			continue
+		var serviceInfo service.Service
+		if serv.Local != "" {
+			bdata, err := os.ReadFile("example/" + serv.Local)
+			if err != nil {
+				log.WithError(err).Fatal("unable to read local service file")
+				continue
+			}
+			err = yaml.Unmarshal(bdata, &serviceInfo)
+			if err != nil {
+				log.WithError(err).Fatal("unable to unmarshal local service file")
+				continue
+			}
+		} else {
+			u, err := url.Parse(fmt.Sprintf("https://%s/%s/nerthus.yml", strings.ReplaceAll(serv.Git, "github", "raw.githubusercontent"), serv.Branch))
+			if err != nil {
+				log.WithError(err).Fatal("while creating url for service info")
+				continue
+			}
+			serviceInfo, err = GetService(u)
+			if err != nil {
+				log.WithError(err).Fatal("while getting service info from git", "url", u.String())
+				continue
+			}
 		}
 		if sys.Services[i].NumberOfNodes == 0 { //TODO: actually handle requirements
 			if serviceInfo.Requirements.NotClusterAble {
@@ -677,6 +691,6 @@ func AnsibleService(serv system.Service, bufPool *sync.Pool) {
 		fn := fmt.Sprintf("ansible/%s.yml", serv.Node.Vars["host"])
 		os.Remove(fn)
 		os.WriteFile(fn, out, 0644)
-		log.Info("node playbook", "node", serv.Node, "yaml", string(out))
+		//log.Info("node playbook", "node", serv.Node, "yaml", string(out))
 	}
 }

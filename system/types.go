@@ -16,6 +16,7 @@ type Service struct {
 	Vars          Vars              `yaml:"vars"`
 	Expose        []int             `yaml:"expose,omitempty"`
 	Playbook      string            `yaml:"playbook,omitempty"`
+	Local         string            `yaml:"local,omitempty"`
 	Git           string            `yaml:"git,omitempty"`
 	Branch        string            `yaml:"branch,omitempty"`
 	Override      map[string]string `yaml:"override,omitempty"`

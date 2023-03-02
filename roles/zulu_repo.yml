@@ -1,0 +1,5 @@
+name: Install Zulu repo
+tasks:
+  - name: Install Zulu repo
+    ansible.builtin.shell: |
+      yum install -y https://cdn.azul.com/zulu/bin/zulu-repo-1.0.0-1.noarch.rpm

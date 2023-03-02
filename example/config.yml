@@ -22,10 +22,11 @@ services:
       webserver_port: 13030
     override: #Overrides dependencies
       eventstore: services/eventstore #In this case overrides local installation with deployed service
-  - name: eventstore
+  - name: visuale
+    local: visuale.yml
+    git: github.com/Cantara/visuale
+    branch: master
+    number_of_nodes: 1
     vars:
-      instance_size: t3.small
-    expose:
-      - 2113
-    playbook: eventstore
-    internal: true
+      webserver_port: 9292
+      access_token: 65971cb8-54af-42b4-8853-30989764ed5a
