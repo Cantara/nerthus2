@@ -15,6 +15,7 @@ services:
     vars:
       webserver_port: 13030
   - name: wamper
+    number_of_nodes: 2
     git: github.com/Cantara/wamper
     branch: main
     vars:

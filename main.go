@@ -87,8 +87,12 @@ func main() {
 			log.WithError(err).Fatal("while getting service info from git", "url", u.String())
 			continue
 		}
-		if !sys.Services[i].NotClusterAble { //TODO: actually handle requirements
-			sys.Services[i].NotClusterAble = serviceInfo.Requirements.NotClusterAble
+		if sys.Services[i].NumberOfNodes == 0 { //TODO: actually handle requirements
+			if serviceInfo.Requirements.NotClusterAble {
+				sys.Services[i].NumberOfNodes = 1
+			} else {
+				sys.Services[i].NumberOfNodes = 3
+			}
 		}
 		sys.Services[i].Node = &ansible.Playbook{
 			Name:       serviceInfo.Name,
@@ -166,16 +170,16 @@ func main() {
 			extraVars["vpc_name"] = fmt.Sprintf("%s-vpc", extraVars["system"])
 		}
 		if v, ok := extraVars["node_names"]; !ok || v == nil {
-			if serv.NotClusterAble {
+			if serv.NumberOfNodes == 1 {
 				extraVars["node_names"] = []string{
 					fmt.Sprintf("%s-%s", extraVars["system"], extraVars["service"]),
 				}
 			} else {
-				extraVars["node_names"] = []string{
-					fmt.Sprintf("%s-%s-1", extraVars["system"], extraVars["service"]),
-					fmt.Sprintf("%s-%s-2", extraVars["system"], extraVars["service"]),
-					fmt.Sprintf("%s-%s-3", extraVars["system"], extraVars["service"]),
+				nodeNames := make([]string, serv.NumberOfNodes)
+				for num := 1; num <= serv.NumberOfNodes; num++ {
+					nodeNames[num-1] = fmt.Sprintf("%s-%s-%d", extraVars["system"], extraVars["service"], num)
 				}
+				extraVars["node_names"] = nodeNames
 			}
 		}
 		if v, ok := extraVars["security_group_name"]; !ok || v == nil || v == "" {
@@ -256,86 +260,20 @@ func main() {
 		})
 	}
 
+	var wg sync.WaitGroup
 	for _, serv := range sys.Services {
-		func(serv system.Service) {
-			buff := bufPool.Get().(*bytes.Buffer)
-			defer bufPool.Put(buff)
-
-			exec := execute.NewDefaultExecute(
-				execute.WithWrite(io.Writer(buff)),
-			)
-
-			ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
-				ExtraVars: serv.Vars,
-			}
-			play := "provision.yml"
-			if serv.Playbook != "" {
-				play = fmt.Sprintf("%s/%s", serv.Playbook, play)
-			}
-			pb := &playbook.AnsiblePlaybookCmd{
-				Playbooks:      []string{"example/ansible/" + play},
-				Exec:           exec,
-				StdoutCallback: "json",
-				Options:        ansiblePlaybookOptions,
-			}
-
-			err = pb.Run(context.Background())
-			if err != nil {
-				log.WithError(err).Error("while running ansible playbook")
-				//return
-			}
-
-			res, err := results.ParseJSONResultsStream(io.Reader(buff))
-			if err != nil {
-				log.WithError(err).Fatal("while parsing json result stream")
-				//panic(err)
-			}
-
-			for _, play := range res.Plays {
-				for _, task := range play.Tasks {
-					for _, content := range task.Hosts {
-						status := "Finished"
-						if content.Changed {
-							status = "Changed"
-						} else if content.Failed {
-							status = "Failed"
-						} else if content.Skipped {
-							status = "Skipped: " + content.SkipReason
-						}
-						log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
-						if status == "Failed" {
-							log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
-						}
-					}
-				}
-			}
-
-			if serv.Node == nil {
-				return
-			}
-			for k := range serv.Node.Vars {
-				cur, ok := serv.Vars[k]
-				if !ok || cur == nil {
-					continue
-				}
-				log.Info("server node vars", "key", k, "val", cur)
-				serv.Node.Vars[k] = fmt.Sprint(cur)
-			}
-			for i := 1; i < 4; i++ {
-				serv.Node.Vars["host"] = fmt.Sprintf("%s-%s-%d", serv.Vars["system"], serv.Vars["service"], i)
-				serv.Node.Vars["server_number"] = strconv.Itoa(i)
-				out, err := yaml.Marshal(serv.Node)
-				if err != nil {
-					log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
-					return
-				}
-				fn := fmt.Sprintf("ansible/%s.yml", serv.Node.Vars["host"])
-				os.Remove(fn)
-				os.WriteFile(fn, out, 0644)
-				log.Info("node playbook", "node", serv.Node, "yaml", string(out))
-			}
+		if serv.Playbook != "" {
+			wg.Wait()
+			AnsibleService(serv, &bufPool)
+			continue
+		}
+		wg.Add(1)
+		go func(serv system.Service) {
+			AnsibleService(serv, &bufPool)
+			wg.Done()
 		}(serv)
 	}
+	wg.Wait()
 
 	func() {
 		buff := bufPool.Get().(*bytes.Buffer)
@@ -662,4 +600,83 @@ type Rule struct {
 	Conditions []Condition `json:"Conditions"`
 	Actions    []Action    `json:"Actions"`
 	Priority   int         `json:"Priority"`
+}
+
+func AnsibleService(serv system.Service, bufPool *sync.Pool) {
+	buff := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buff)
+
+	exec := execute.NewDefaultExecute(
+		execute.WithWrite(io.Writer(buff)),
+	)
+
+	ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+		ExtraVars: serv.Vars,
+	}
+	play := "provision.yml"
+	if serv.Playbook != "" {
+		play = fmt.Sprintf("%s/%s", serv.Playbook, play)
+	}
+	pb := &playbook.AnsiblePlaybookCmd{
+		Playbooks:      []string{"example/ansible/" + play},
+		Exec:           exec,
+		StdoutCallback: "json",
+		Options:        ansiblePlaybookOptions,
+	}
+
+	err := pb.Run(context.Background())
+	if err != nil {
+		log.WithError(err).Error("while running ansible playbook")
+		//return
+	}
+
+	res, err := results.ParseJSONResultsStream(io.Reader(buff))
+	if err != nil {
+		log.WithError(err).Fatal("while parsing json result stream")
+		//panic(err)
+	}
+
+	for _, play := range res.Plays {
+		for _, task := range play.Tasks {
+			for _, content := range task.Hosts {
+				status := "Finished"
+				if content.Changed {
+					status = "Changed"
+				} else if content.Failed {
+					status = "Failed"
+				} else if content.Skipped {
+					status = "Skipped: " + content.SkipReason
+				}
+				log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
+				if status == "Failed" {
+					log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
+				}
+			}
+		}
+	}
+
+	if serv.Node == nil {
+		return
+	}
+	for k := range serv.Node.Vars {
+		cur, ok := serv.Vars[k]
+		if !ok || cur == nil {
+			continue
+		}
+		log.Info("server node vars", "key", k, "val", cur)
+		serv.Node.Vars[k] = fmt.Sprint(cur)
+	}
+	for i := 1; i < 4; i++ {
+		serv.Node.Vars["host"] = fmt.Sprintf("%s-%s-%d", serv.Vars["system"], serv.Vars["service"], i)
+		serv.Node.Vars["server_number"] = strconv.Itoa(i)
+		out, err := yaml.Marshal(serv.Node)
+		if err != nil {
+			log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
+			return
+		}
+		fn := fmt.Sprintf("ansible/%s.yml", serv.Node.Vars["host"])
+		os.Remove(fn)
+		os.WriteFile(fn, out, 0644)
+		log.Info("node playbook", "node", serv.Node, "yaml", string(out))
+	}
 }

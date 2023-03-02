@@ -162,7 +162,7 @@
         instance_type: "{{ instance_size }}"
         image_id: "{{ ami }}"
         region: "{{ region }}"
-        vpc_subnet_id: "{{ subnets.results[index].subnet.id }}"
+        vpc_subnet_id: "{{ subnets.results[index%3].subnet.id }}"
         network:
           assign_public_ip: true
         volumes:
@@ -191,11 +191,9 @@
       async_status:
         jid: "{{ item.ansible_job_id }}"
       register: instances
-      #register: instances
       retries: 500
       delay: 5
       until: instances.finished
-      #until: instances.finished
       loop: "{{instances.results}}"
       when:
         - item.finished is defined

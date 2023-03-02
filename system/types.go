@@ -12,14 +12,14 @@ type System struct {
 type Vars map[string]any
 
 type Service struct {
-	Name           string            `yaml:"name"`
-	Vars           Vars              `yaml:"vars"`
-	Expose         []int             `yaml:"expose,omitempty"`
-	Playbook       string            `yaml:"playbook,omitempty"`
-	Git            string            `yaml:"git,omitempty"`
-	Branch         string            `yaml:"branch,omitempty"`
-	Override       map[string]string `yaml:"override,omitempty"`
-	Internal       bool              `yaml:"internal"`
-	NotClusterAble bool              `yaml:"not_cluster_able"`
-	Node           *ansible.Playbook `yaml:"-,omitempty"`
+	Name          string            `yaml:"name"`
+	Vars          Vars              `yaml:"vars"`
+	Expose        []int             `yaml:"expose,omitempty"`
+	Playbook      string            `yaml:"playbook,omitempty"`
+	Git           string            `yaml:"git,omitempty"`
+	Branch        string            `yaml:"branch,omitempty"`
+	Override      map[string]string `yaml:"override,omitempty"`
+	Internal      bool              `yaml:"internal"`
+	NumberOfNodes int               `yaml:"number_of_nodes"`
+	Node          *ansible.Playbook `yaml:"-,omitempty"`
 }
