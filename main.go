@@ -87,6 +87,9 @@ func main() {
 			log.WithError(err).Fatal("while getting service info from git", "url", u.String())
 			continue
 		}
+		if !sys.Services[i].NotClusterAble { //TODO: actually handle requirements
+			sys.Services[i].NotClusterAble = serviceInfo.Requirements.NotClusterAble
+		}
 		sys.Services[i].Node = &ansible.Playbook{
 			Name:       serviceInfo.Name,
 			Hosts:      "localhost",
@@ -161,6 +164,19 @@ func main() {
 		}
 		if v, ok := extraVars["vpc_name"]; !ok || v == nil || v == "" {
 			extraVars["vpc_name"] = fmt.Sprintf("%s-vpc", extraVars["system"])
+		}
+		if v, ok := extraVars["node_names"]; !ok || v == nil {
+			if serv.NotClusterAble {
+				extraVars["node_names"] = []string{
+					fmt.Sprintf("%s-%s", extraVars["system"], extraVars["service"]),
+				}
+			} else {
+				extraVars["node_names"] = []string{
+					fmt.Sprintf("%s-%s-1", extraVars["system"], extraVars["service"]),
+					fmt.Sprintf("%s-%s-2", extraVars["system"], extraVars["service"]),
+					fmt.Sprintf("%s-%s-3", extraVars["system"], extraVars["service"]),
+				}
+			}
 		}
 		if v, ok := extraVars["security_group_name"]; !ok || v == nil || v == "" {
 			extraVars["security_group_name"] = fmt.Sprintf("%s-%s-sg", extraVars["system"], extraVars["service"])
@@ -632,12 +648,6 @@ func GetService(u *url.URL) (serv service.Service, err error) {
 		fmt.Println(task["name"])
 	}
 */
-
-type serviceInfo struct {
-	Name     string `json:"service"`
-	TG       string `json:"target_group_name"`
-	Priority int    `json:"path_priority"`
-}
 
 type Condition struct {
 	Field  string   `json:"Field"`

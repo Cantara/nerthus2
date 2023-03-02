@@ -45,16 +45,12 @@
       register: key_pair
     - name: check if key file exists
       stat:
-        path: "{{ key_name }}.pem"
+        path: "../keys/{{ key_name }}.pem"
       register: keyfile
     - name: Copy private key to local machine
       copy:
         content: "{{ key_pair.key.private_key }}"
-        dest: "{{ key_name }}.pem"
-      when: keyfile.stat.exists == false
-    - name: Set permissions on private key
-      file:
-        path: "{{ key_name }}.pem"
+        dest: "../keys/{{ key_name }}.pem"
         mode: 0600
       when: keyfile.stat.exists == false
     - name: Create VPC

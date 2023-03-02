@@ -8,8 +8,9 @@ type Service struct {
 	Requirements Requirements `yaml:"requirements"`
 }
 type Requirements struct {
-	RAM        string `yaml:"ram"`
-	Disk       string `yaml:"disk"`
-	CPU        int    `yaml:"cpu"`
-	Properties string `yaml:"properties"`
+	RAM            string `yaml:"ram"`
+	Disk           string `yaml:"disk"`
+	CPU            int    `yaml:"cpu"`
+	Properties     string `yaml:"properties"`
+	NotClusterAble bool   `yaml:"not_cluster_able"`
 }

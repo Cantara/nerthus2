@@ -27,3 +27,4 @@ services:
     expose:
       - 2113
     playbook: eventstore
+    internal: true

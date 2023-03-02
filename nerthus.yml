@@ -8,3 +8,4 @@ requirements:
   disk: 5GB
   cpu: 1
   properties: .env
+  not_cluster_able: true
