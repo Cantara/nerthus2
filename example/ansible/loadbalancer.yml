@@ -1,0 +1,73 @@
+---
+- name: Create resources in Tokyo region
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: ap-northeast-1
+    rules:
+    vpc_name:
+    certificate_arn:
+    loadbalancer_name:
+  tasks:
+    - amazon.aws.ec2_vpc_net_info:
+        filters:
+          "tag:Name": "{{ vpc_name }}"
+      register: vpc
+    - name: Display VPC
+      debug: var=vpc
+    - amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          vpc-id: "{{ vpc.vpcs[0].id }}"
+      register: subnets
+    - name: Display Subnets
+      debug: var=subnets
+    - name: Create loadbalancer security group
+      ec2_group:
+        name: "{{ loadbalancer_name }}-sg"
+        description: "Security group for loadbalancer"
+        vpc_id: "{{ vpc.vpcs[0].id }}"
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
+        state: present
+      register: security_group
+    - name: Create Application Load Balancer
+      elb_application_lb:
+        name: "{{ loadbalancer_name }}"
+        state: present
+        region: "{{ region }}"
+        security_groups:
+          - "{{ security_group.group_id }}"
+        subnets: "{{ subnets.subnets | map(attribute='id') | list }}"
+        listeners:
+          - Protocol: HTTP
+            Port: 80
+            DefaultActions:
+              - Type: redirect
+                RedirectConfig:
+                  Protocol: HTTPS
+                  Port: "443"
+                  Host: "#{host}"
+                  Path: "/#{path}"
+                  Query: "#{query}"
+                  StatusCode: "HTTP_301"
+          - Protocol: HTTPS
+            Port: 443
+            DefaultActions:
+              - Type: fixed-response
+                FixedResponseConfig:
+                  ContentType: "text/plain"
+                  MessageBody: "404 Not Found"
+                  StatusCode: "404"
+            Certificates:
+              - CertificateArn: "{{ certificate_arn }}"
+            SslPolicy: ELBSecurityPolicy-2015-05
+            Rules: "{{ rules }}"

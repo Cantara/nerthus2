@@ -26,6 +26,7 @@ tasks:
       ansible.builtin.get_url:
         url: "https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/buri/v{{ buri_base_version }}/buri-v{{ buri_base_version }}-{{ os }}-{{ arch }}"
         dest: "/home/{{ service }}/"
+        mode: u+rwx
       register: buri_new
     - name: Create symbolic link for buri
       file:

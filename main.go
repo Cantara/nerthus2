@@ -128,6 +128,9 @@ func main() {
 				if k == "service" {
 					continue
 				}
+				if k == "system" {
+					continue
+				}
 				if v == "" {
 					continue
 				}
@@ -153,6 +156,21 @@ func main() {
 			extraVars[k] = v
 		}
 
+		if v, ok := extraVars["key_name"]; !ok || v == nil || v == "" {
+			extraVars["key_name"] = fmt.Sprintf("%s-key", extraVars["system"])
+		}
+		if v, ok := extraVars["vpc_name"]; !ok || v == nil || v == "" {
+			extraVars["vpc_name"] = fmt.Sprintf("%s-vpc", extraVars["system"])
+		}
+		if v, ok := extraVars["security_group_name"]; !ok || v == nil || v == "" {
+			extraVars["security_group_name"] = fmt.Sprintf("%s-%s-sg", extraVars["system"], extraVars["service"])
+		}
+		if v, ok := extraVars["target_group_name"]; !ok || v == nil || v == "" {
+			extraVars["target_group_name"] = fmt.Sprintf("%s-%s-tg", extraVars["system"], extraVars["service"])
+		}
+		if v, ok := extraVars["loadbalancer_name"]; !ok || v == nil || v == "" {
+			extraVars["loadbalancer_name"] = fmt.Sprintf("%s-lb", extraVars["system"])
+		}
 		sys.Services[i].Vars = extraVars
 
 		for _, v := range serv.Override {
@@ -183,6 +201,45 @@ func main() {
 		}
 	}
 
+	/*
+	   Rules:
+	     - Conditions:
+	         - Field: path-pattern
+	           Values:
+	             - "/{{ item.service }}"
+	             - "/{{ item.service }}/*"
+	       Actions:
+	         - TargetGroupName: "{{ item.target_group_name }}"
+	           Type: forward
+	       Priority: "{{ item.path_priority }}"
+	*/
+	i := 0
+	rules := []Rule{}
+	for _, serv := range sys.Services {
+		if serv.Playbook != "" {
+			continue
+		}
+		i++
+		rules = append(rules, Rule{
+			Conditions: []Condition{
+				{
+					Field: "path-pattern",
+					Values: []string{
+						fmt.Sprintf("/%s", serv.Vars["service"]),
+						fmt.Sprintf("/%s/*", serv.Vars["service"]),
+					},
+				},
+			},
+			Actions: []Action{
+				{
+					TargetGroupName: serv.Vars["target_group_name"].(string),
+					Type:            "forward",
+				},
+			},
+			Priority: i,
+		})
+	}
+
 	for _, serv := range sys.Services {
 		func(serv system.Service) {
 			buff := bufPool.Get().(*bytes.Buffer)
@@ -199,8 +256,6 @@ func main() {
 			if serv.Playbook != "" {
 				play = fmt.Sprintf("%s/%s", serv.Playbook, play)
 			}
-			log.Info("skipping ansible run", "service", serv)
-			//return
 			pb := &playbook.AnsiblePlaybookCmd{
 				Playbooks:      []string{"example/ansible/" + play},
 				Exec:           exec,
@@ -210,13 +265,14 @@ func main() {
 
 			err = pb.Run(context.Background())
 			if err != nil {
-				log.WithError(err).Fatal("while running ansible playbook")
-				return
+				log.WithError(err).Error("while running ansible playbook")
+				//return
 			}
 
 			res, err := results.ParseJSONResultsStream(io.Reader(buff))
 			if err != nil {
-				panic(err)
+				log.WithError(err).Fatal("while parsing json result stream")
+				//panic(err)
 			}
 
 			for _, play := range res.Plays {
@@ -231,6 +287,9 @@ func main() {
 							status = "Skipped: " + content.SkipReason
 						}
 						log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
+						if status == "Failed" {
+							log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
+						}
 					}
 				}
 			}
@@ -261,6 +320,62 @@ func main() {
 			}
 		}(serv)
 	}
+
+	func() {
+		buff := bufPool.Get().(*bytes.Buffer)
+		defer bufPool.Put(buff)
+
+		exec := execute.NewDefaultExecute(
+			execute.WithWrite(io.Writer(buff)),
+		)
+
+		ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+			ExtraVars: map[string]interface{}{
+				"rules":             rules,
+				"vpc_name":          fmt.Sprintf("%s-vpc", sys.Name),
+				"certificate_arn":   "arn:aws:acm:ap-northeast-1:217183500018:certificate/31f4a295-84f3-46b2-b9a6-96100d474e46",
+				"loadbalancer_name": fmt.Sprintf("%s-lb", sys.Name),
+			},
+		}
+		play := "loadbalancer.yml"
+		pb := &playbook.AnsiblePlaybookCmd{
+			Playbooks:      []string{"example/ansible/" + play},
+			Exec:           exec,
+			StdoutCallback: "json",
+			Options:        ansiblePlaybookOptions,
+		}
+
+		err = pb.Run(context.Background())
+		if err != nil {
+			log.WithError(err).Error("while running ansible playbook")
+			//return
+		}
+
+		res, err := results.ParseJSONResultsStream(io.Reader(buff))
+		if err != nil {
+			log.WithError(err).Fatal("while parsing json result stream")
+			//panic(err)
+		}
+
+		for _, play := range res.Plays {
+			for _, task := range play.Tasks {
+				for _, content := range task.Hosts {
+					status := "Finished"
+					if content.Changed {
+						status = "Changed"
+					} else if content.Failed {
+						status = "Failed"
+					} else if content.Skipped {
+						status = "Skipped: " + content.SkipReason
+					}
+					log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
+					if status == "Failed" {
+						log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
+					}
+				}
+			}
+		}
+	}()
 
 	log.Fatal("f")
 	portString := os.Getenv("webserver.port")
@@ -326,7 +441,7 @@ func main() {
 
 		res, err := results.ParseJSONResultsStream(io.Reader(buff))
 		if err != nil {
-			panic(err)
+			log.WithError(err).Fatal("while parsing json result stream")
 		}
 
 		msgOutput := struct {
@@ -517,3 +632,24 @@ func GetService(u *url.URL) (serv service.Service, err error) {
 		fmt.Println(task["name"])
 	}
 */
+
+type serviceInfo struct {
+	Name     string `json:"service"`
+	TG       string `json:"target_group_name"`
+	Priority int    `json:"path_priority"`
+}
+
+type Condition struct {
+	Field  string   `json:"Field"`
+	Values []string `json:"Values"`
+}
+type Action struct {
+	TargetGroupName string `json:"TargetGroupName"`
+	Type            string `json:"Type"`
+}
+
+type Rule struct {
+	Conditions []Condition `json:"Conditions"`
+	Actions    []Action    `json:"Actions"`
+	Priority   int         `json:"Priority"`
+}

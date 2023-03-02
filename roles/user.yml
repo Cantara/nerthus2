@@ -2,10 +2,17 @@ name: Add service User
 vars:
   service:
 tasks:
-  - name: Add service user {{ service }}
+  - name: "Add service user {{ service }}"
     ansible.builtin.user:
       name: "{{ service }}"
       comment: "User for {{ service }}"
       home: "/home/{{ service }}"
     become: yes
     become_user: root
+  - name: Set su file
+    copy:
+      content: |
+        #!/bin/sh
+        sudo su - {{ service }}
+      dest: "~/su_{{ service }}.sh"
+      mode: u+rwx

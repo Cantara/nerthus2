@@ -9,8 +9,8 @@ tasks:
       copy:
         content: |
           MAILTO=""
-          {{ server_number%3*10 }},{{ server_number%3*10+30 }} * * * * sudo yum update -y > /dev/null
-          0 {{ 3+server_number }} * * 6 sudo reboot
+          {{ server_number|int%3*10 }},{{ server_number|int%3*10+30 }} * * * * sudo yum update -y > /dev/null
+          0 {{ 3+server_number|int }} * * 6 sudo reboot
         dest: ~/CRON
     - name: Remove cronjob from crontab scheduler
       shell: crontab -r

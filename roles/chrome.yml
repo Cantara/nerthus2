@@ -1,7 +1,10 @@
 name: Install Chrome
 tasks:
+  - name: Download chrome
+    ansible.builtin.get_url:
+      url: "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
+      dest: "./"
   - name: Install chrome
     ansible.builtin.shell: |
-      wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
       yum localinstall -y google-chrome-stable_current_x86_64.rpm
       rm google-chrome-stable_current_x86_64.rpm

@@ -12,6 +12,10 @@
     system: cantara-lab
     zone: lab.cantara.infra
     security_group_rules: []
+    key_name:
+    vpc_name:
+    security_group_name:
+    target_group_name:
   tasks:
     - set_fact:
         vpc_cidr: "{{ cidr_base }}.0/24"
@@ -23,12 +27,11 @@
           - { name: "{{ system }}-{{ service }}-1", ami: "{{ ami }}" }
           - { name: "{{ system }}-{{ service }}-2", ami: "{{ ami }}" }
           - { name: "{{ system }}-{{ service }}-3", ami: "{{ ami }}" }
-        key_name: "{{ system }}-key"
-        vpc_name: "{{ system }}-vpc"
-        lb_name: "{{ system }}-lb"
-        security_group_name: "{{ system }}-{{ service }}-sg"
-        target_group_name: "{{ system }}-{{ service }}-tg"
-    - set_fact:
+        #key_name: "{{ system }}-key"
+        #vpc_name: "{{ system }}-vpc"
+        #lb_name: "{{ system }}-lb"
+        #security_group_name: "{{ system }}-{{ service }}-sg"
+        #target_group_name: "{{ system }}-{{ service }}-tg"
         security_group_rules_base:
           - proto: tcp
             from_port: 22
@@ -184,7 +187,7 @@
         state: started
         wait: true
         user_data: |
-          #!/bin/system sh
+          #!/bin/sh
           amazon-linux-extras enable ansible2
           yum install -y ansible > /dev/null
           ansible-galaxy collection install community.docker > /dev/null
@@ -238,27 +241,6 @@
     - name: Display instance_ids_new
       debug:
         msg: "{{ instances_ids_new }}"
-    - name: Create Application Load Balancer
-      elb_application_lb:
-        name: "{{ lb_name }}"
-        state: present
-        region: "{{ region }}"
-        security_groups:
-          - "{{ security_group.group_id }}"
-        subnets: "{{ subnets.results | map(attribute='subnet.id') | list }}"
-        listeners:
-          - Protocol: HTTP
-            Port: 80
-            DefaultActions:
-              - Type: redirect
-                RedirectConfig:
-                  Protocol: HTTPS
-                  Port: "443"
-                  Host: "#{host}"
-                  Path: "/#{path}"
-                  Query: "#{query}"
-                  StatusCode: "HTTP_301"
-      register: http_lb
     - name: Create Application Load Balancer Target Group
       elb_target_group:
         name: "{{ target_group_name }}"
