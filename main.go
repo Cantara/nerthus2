@@ -5,10 +5,20 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"github.com/apenella/go-ansible/pkg/execute"
+	"github.com/apenella/go-ansible/pkg/playbook"
+	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
+	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/gober/syncmap"
+	"github.com/cantara/gober/webserver"
+	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/message"
 	"github.com/cantara/nerthus2/system"
 	"github.com/cantara/nerthus2/system/service"
+	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 	"io"
 	"net/http"
@@ -18,28 +28,127 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/apenella/go-ansible/pkg/execute"
-	"github.com/apenella/go-ansible/pkg/playbook"
-	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
-	log "github.com/cantara/bragi/sbragi"
-	"github.com/cantara/gober/syncmap"
-	"github.com/cantara/gober/webserver"
-	"github.com/cantara/gober/websocket"
-	"github.com/cantara/nerthus2/message"
-	"github.com/gin-gonic/gin"
 )
 
-//go:embed roles
-var roleFS embed.FS
+//go:embed roles bootstrap
+var EFS embed.FS
 
+var bootstrap bool
+var gitRepo string
+var gitToken string
+var systemName string
+
+func init() {
+	const ( //TODO: Add bootstrap git as a separate command from bootstrap.
+		defaultBootstrap  = false
+		bootstrapUsage    = "tells nerthus to bootstrap itself into aws"
+		defaultGitRepo    = "github.com/cantara/nerthus2"
+		gitRepoUsage      = "github repository for solution config"
+		defaultGitToken   = ""
+		gitTokenUsage     = "github repository granular access token"
+		defaultSystemName = "nerthus2"
+		systemNameUsage   = "defines the system that Nerthus should use to provision itself"
+	)
+	flag.BoolVar(&bootstrap, "bootstrap", defaultBootstrap, bootstrapUsage)
+	flag.BoolVar(&bootstrap, "b", defaultBootstrap, bootstrapUsage+" (shorthand)")
+	flag.StringVar(&gitRepo, "git-repo", defaultGitRepo, gitRepoUsage)
+	flag.StringVar(&gitRepo, "r", defaultGitRepo, gitRepoUsage+" (shorthand)")
+	flag.StringVar(&gitToken, "git-token", defaultGitToken, gitTokenUsage)
+	flag.StringVar(&gitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
+	flag.StringVar(&systemName, "system-name", defaultSystemName, systemNameUsage)
+	flag.StringVar(&systemName, "n", defaultSystemName, systemNameUsage+" (shorthand)")
+}
 func main() {
+	flag.Parse()
+	gitRepo = "github.com/SindreBrurberg/nerthus-test-config"
+
+	dir := "tmp-test-dir"
+	//dir, err := os.MkdirTemp(".", "config-repo")
+	//if err != nil {
+	//	log.WithError(err).Fatal("while creating tmpdir for git clone")
+	//}
+	//defer os.RemoveAll(dir)
+
+	/* Tested and works, skipping for now TODO: Re enable
+	gitAuth := gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
+		Username: "nerthus",
+		Password: gitToken,
+	}
+	// Clones the repository into the given dir, just as a normal git clone does
+	r, err := git.PlainClone(dir, false, &git.CloneOptions{
+		Auth: &gitAuth,
+		URL:  fmt.Sprintf("https://%s.git", gitRepo),
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while cloning git repo")
+	}
+
+	w, err := r.Worktree()
+	if err != nil {
+		log.WithError(err).Fatal("while getting git work tree")
+	}
+	err = fs.WalkDir(EFS, "bootstrap", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "bootstrap" {
+			return nil
+		}
+
+		filename := strings.TrimPrefix(path, "bootstrap/")
+		fullFilename := filepath.Join(dir, filename)
+		log.Info("processing file from EFS", "filename", filename)
+
+		if d.IsDir() {
+			err = os.Mkdir(fullFilename, 0750)
+			if errors.Is(err, os.ErrExist) {
+				return nil
+			}
+			return err
+		}
+
+		data, err := EFS.ReadFile(path)
+		if err != nil {
+			log.WithError(err).Fatal("while reading file from EFS")
+		}
+		err = os.WriteFile(fullFilename, data, 0640)
+		if err != nil {
+			log.WithError(err).Fatal("while writing file from EFS to gitrepo")
+		}
+		_, err = w.Add(filename)
+		if err != nil {
+			log.WithError(err).Fatal("while adding file to commit")
+		}
+		return nil
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while walking bootstrap dir")
+	}
+
+	_, err = w.Commit("committing bootstrap", &git.CommitOptions{
+		Author: &object.Signature{
+			Name: "Nerthus",
+			When: time.Now(),
+		},
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while committing bootstrap")
+	}
+
+	err = r.Push(&git.PushOptions{
+		Auth: &gitAuth,
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while pushing")
+	}
+	*/
+
 	bufPool := sync.Pool{
 		New: func() any {
 			return new(bytes.Buffer)
 		},
 	}
-	fsdes, err := roleFS.ReadDir("roles")
+	fsdes, err := EFS.ReadDir("roles")
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +157,7 @@ func main() {
 		name := strings.TrimSuffix(de.Name(), ".yml")
 		log.Info("roles/" + de.Name())
 		log.Info(name)
-		b, err := roleFS.ReadFile("roles/" + de.Name())
+		b, err := EFS.ReadFile("roles/" + de.Name())
 		if err != nil {
 			log.WithError(err).Fatal("while reading file in roles")
 		}
@@ -61,7 +170,7 @@ func main() {
 		roles[name] = role
 	}
 	var sys system.System
-	data, err := os.ReadFile("example/config.yml")
+	data, err := os.ReadFile(dir + "/nerthus/config.yml")
 	if err != nil {
 		log.WithError(err).Fatal("while reading example config file")
 	}
@@ -79,7 +188,7 @@ func main() {
 		}
 		var serviceInfo service.Service
 		if serv.Local != "" {
-			bdata, err := os.ReadFile("example/" + serv.Local)
+			bdata, err := os.ReadFile(dir + "/nerthus/" + serv.Local)
 			if err != nil {
 				log.WithError(err).Fatal("unable to read local service file")
 				continue
@@ -136,7 +245,7 @@ func main() {
 	}
 	nerthusVars := map[string]string{
 		"region": "ap-northeast-1",
-		"ami":    "ami-0bba69335379e17f8",
+		//"ami":    "ami-0bba69335379e17f8",
 	}
 
 	for i, serv := range sys.Services {
@@ -278,12 +387,12 @@ func main() {
 	for _, serv := range sys.Services {
 		if serv.Playbook != "" {
 			wg.Wait()
-			AnsibleService(serv, &bufPool)
+			AnsibleService(dir+"/nerthus/", serv, &bufPool)
 			continue
 		}
 		wg.Add(1)
 		go func(serv system.Service) {
-			AnsibleService(serv, &bufPool)
+			AnsibleService(dir+"/nerthus/", serv, &bufPool)
 			wg.Done()
 		}(serv)
 	}
@@ -616,7 +725,7 @@ type Rule struct {
 	Priority   int         `json:"Priority"`
 }
 
-func AnsibleService(serv system.Service, bufPool *sync.Pool) {
+func AnsibleService(dir string, serv system.Service, bufPool *sync.Pool) {
 	buff := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buff)
 
@@ -631,8 +740,9 @@ func AnsibleService(serv system.Service, bufPool *sync.Pool) {
 	if serv.Playbook != "" {
 		play = fmt.Sprintf("%s/%s", serv.Playbook, play)
 	}
+	play = "bootstrap-provision.yml"
 	pb := &playbook.AnsiblePlaybookCmd{
-		Playbooks:      []string{"example/ansible/" + play},
+		Playbooks:      []string{dir + "ansible/" + play},
 		Exec:           exec,
 		StdoutCallback: "json",
 		Options:        ansiblePlaybookOptions,
@@ -680,8 +790,8 @@ func AnsibleService(serv system.Service, bufPool *sync.Pool) {
 		log.Info("server node vars", "key", k, "val", cur)
 		serv.Node.Vars[k] = fmt.Sprint(cur)
 	}
-	for i := 1; i < 4; i++ {
-		serv.Node.Vars["host"] = fmt.Sprintf("%s-%s-%d", serv.Vars["system"], serv.Vars["service"], i)
+	for i, name := range serv.Vars["node_names"].([]string) {
+		serv.Node.Vars["host"] = name
 		serv.Node.Vars["server_number"] = strconv.Itoa(i)
 		out, err := yaml.Marshal(serv.Node)
 		if err != nil {
