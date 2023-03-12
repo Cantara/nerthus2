@@ -3,8 +3,10 @@ tasks:
   - name: Download chrome
     ansible.builtin.get_url:
       url: "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
-      dest: "./"
+      dest: "/tmp/google-chrome-stable_current_x86_64.rpm"
   - name: Install chrome
     ansible.builtin.shell: |
-      yum localinstall -y google-chrome-stable_current_x86_64.rpm
-      rm google-chrome-stable_current_x86_64.rpm
+      yum localinstall -y /tmp/google-chrome-stable_current_x86_64.rpm
+      rm /tmp/google-chrome-stable_current_x86_64.rpm
+    become: yes
+    become_user: root

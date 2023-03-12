@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/apenella/go-ansible/pkg/execute"
@@ -21,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -60,88 +62,11 @@ func init() {
 }
 func main() {
 	flag.Parse()
+	bootstrap = true
+	gitToken = "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"
 	gitRepo = "github.com/SindreBrurberg/nerthus-test-config"
 
-	dir := "tmp-test-dir"
-	//dir, err := os.MkdirTemp(".", "config-repo")
-	//if err != nil {
-	//	log.WithError(err).Fatal("while creating tmpdir for git clone")
-	//}
-	//defer os.RemoveAll(dir)
-
-	/* Tested and works, skipping for now TODO: Re enable
-	gitAuth := gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
-		Username: "nerthus",
-		Password: gitToken,
-	}
-	// Clones the repository into the given dir, just as a normal git clone does
-	r, err := git.PlainClone(dir, false, &git.CloneOptions{
-		Auth: &gitAuth,
-		URL:  fmt.Sprintf("https://%s.git", gitRepo),
-	})
-	if err != nil {
-		log.WithError(err).Fatal("while cloning git repo")
-	}
-
-	w, err := r.Worktree()
-	if err != nil {
-		log.WithError(err).Fatal("while getting git work tree")
-	}
-	err = fs.WalkDir(EFS, "bootstrap", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == "bootstrap" {
-			return nil
-		}
-
-		filename := strings.TrimPrefix(path, "bootstrap/")
-		fullFilename := filepath.Join(dir, filename)
-		log.Info("processing file from EFS", "filename", filename)
-
-		if d.IsDir() {
-			err = os.Mkdir(fullFilename, 0750)
-			if errors.Is(err, os.ErrExist) {
-				return nil
-			}
-			return err
-		}
-
-		data, err := EFS.ReadFile(path)
-		if err != nil {
-			log.WithError(err).Fatal("while reading file from EFS")
-		}
-		err = os.WriteFile(fullFilename, data, 0640)
-		if err != nil {
-			log.WithError(err).Fatal("while writing file from EFS to gitrepo")
-		}
-		_, err = w.Add(filename)
-		if err != nil {
-			log.WithError(err).Fatal("while adding file to commit")
-		}
-		return nil
-	})
-	if err != nil {
-		log.WithError(err).Fatal("while walking bootstrap dir")
-	}
-
-	_, err = w.Commit("committing bootstrap", &git.CommitOptions{
-		Author: &object.Signature{
-			Name: "Nerthus",
-			When: time.Now(),
-		},
-	})
-	if err != nil {
-		log.WithError(err).Fatal("while committing bootstrap")
-	}
-
-	err = r.Push(&git.PushOptions{
-		Auth: &gitAuth,
-	})
-	if err != nil {
-		log.WithError(err).Fatal("while pushing")
-	}
-	*/
+	dir := "greps" //"tmp-test-dir"
 
 	bufPool := sync.Pool{
 		New: func() any {
@@ -169,290 +94,357 @@ func main() {
 		role.Id = name
 		roles[name] = role
 	}
-	var sys system.System
-	data, err := os.ReadFile(dir + "/nerthus/config.yml")
+	envFS := os.DirFS(dir)
+	var env system.Environment
+	data, err := os.ReadFile(dir + "/config.yml")
 	if err != nil {
-		log.WithError(err).Fatal("while reading example config file")
+		log.WithError(err).Fatal("while reading environment config file")
 	}
-	err = yaml.Unmarshal(data, &sys)
+	err = yaml.Unmarshal(data, &env)
 	if err != nil {
-		log.WithError(err).Fatal("while unmarshalling example config file")
+		log.WithError(err).Fatal("while unmarshalling environment config file")
 	}
-	for i, serv := range sys.Services {
-		if serv.Git == "" && serv.Local == "" {
-			continue
+	envRoles := make(map[string]ansible.Role)
+	for k, v := range roles {
+		envRoles[k] = v
+	}
+	err = ReadRoleDir(envFS, "roles", envRoles)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env roles")
+	}
+	for _, systemDir := range env.Systems {
+		systemRoles := make(map[string]ansible.Role)
+		for k, v := range envRoles {
+			systemRoles[k] = v
 		}
-		if serv.Git != "" && serv.Branch == "" {
-			log.Fatal("missing branch when getting from git", "service", serv)
-			continue //Only in case fatal gets changed to error
+		err = ReadRoleDir(envFS, systemDir+"/roles", systemRoles)
+		if err != nil {
+			log.WithError(err).Fatal("while reading system roles")
 		}
-		var serviceInfo service.Service
-		if serv.Local != "" {
-			bdata, err := os.ReadFile(dir + "/nerthus/" + serv.Local)
-			if err != nil {
-				log.WithError(err).Fatal("unable to read local service file")
-				continue
-			}
-			err = yaml.Unmarshal(bdata, &serviceInfo)
-			if err != nil {
-				log.WithError(err).Fatal("unable to unmarshal local service file")
-				continue
-			}
-		} else {
-			u, err := url.Parse(fmt.Sprintf("https://%s/%s/nerthus.yml", strings.ReplaceAll(serv.Git, "github", "raw.githubusercontent"), serv.Branch))
-			if err != nil {
-				log.WithError(err).Fatal("while creating url for service info")
-				continue
-			}
-			serviceInfo, err = GetService(u)
-			if err != nil {
-				log.WithError(err).Fatal("while getting service info from git", "url", u.String())
-				continue
-			}
+		var sys system.System
+		data, err := os.ReadFile(fmt.Sprintf("%s/%s/config.yml", dir, systemDir))
+		if err != nil {
+			log.WithError(err).Fatal("while reading example config file")
 		}
-		if sys.Services[i].NumberOfNodes == 0 { //TODO: actually handle requirements
-			if serviceInfo.Requirements.NotClusterAble {
-				sys.Services[i].NumberOfNodes = 1
+		err = yaml.Unmarshal(data, &sys)
+		if err != nil {
+			log.WithError(err).Fatal("while unmarshalling example config file")
+		}
+		for i, serv := range sys.Services {
+			if serv.Git == "" && serv.Local == "" {
+				continue
+			}
+			if serv.Git != "" && serv.Branch == "" {
+				log.Fatal("missing branch when getting from git", "service", serv)
+				continue //Only in case fatal gets changed to error
+			}
+			var serviceInfo service.Service
+			if serv.Local != "" {
+				bdata, err := os.ReadFile(fmt.Sprintf("%s/%s/%s", dir, systemDir, serv.Local))
+				if err != nil {
+					log.WithError(err).Fatal("unable to read local service file")
+					continue
+				}
+				err = yaml.Unmarshal(bdata, &serviceInfo)
+				if err != nil {
+					log.WithError(err).Fatal("unable to unmarshal local service file")
+					continue
+				}
 			} else {
-				sys.Services[i].NumberOfNodes = 3
-			}
-		}
-		sys.Services[i].Node = &ansible.Playbook{
-			Name:       serviceInfo.Name,
-			Hosts:      "localhost",
-			Connection: "local",
-			Vars: map[string]string{
-				"env":          sys.Env,
-				"service":      serviceInfo.Name,
-				"service_type": serviceInfo.ServiceType,
-				"health_type":  serviceInfo.HealthType,
-			},
-		}
-		overrides := make([]string, len(serv.Override))
-		oi := 0
-		for k := range serv.Override {
-			overrides[oi] = k
-			oi++
-		}
-		var done []string
-		for _, dep := range serviceInfo.Dependencies {
-			if ArrayContains(overrides, dep) {
-				continue
-			}
-			AddTask(dep, sys.Services[i].Node, &done, roles)
-		}
-
-	}
-	nerthusVars := map[string]string{
-		"region": "ap-northeast-1",
-		//"ami":    "ami-0bba69335379e17f8",
-	}
-
-	for i, serv := range sys.Services {
-		extraVars := map[string]any{
-			"system":  sys.Name,
-			"service": serv.Name,
-		}
-		if serv.Node != nil {
-			for k, v := range serv.Node.Vars {
-				if k == "service" {
+				u, err := url.Parse(fmt.Sprintf("https://%s/%s/nerthus.yml", strings.ReplaceAll(serv.Git, "github", "raw.githubusercontent"), serv.Branch))
+				if err != nil {
+					log.WithError(err).Fatal("while creating url for service info")
 					continue
 				}
-				if k == "system" {
+				serviceInfo, err = GetService(u)
+				if err != nil {
+					log.WithError(err).Fatal("while getting service info from git", "url", u.String())
 					continue
 				}
+			}
+			sys.Services[i].ServiceInfo = &serviceInfo
+			if sys.Services[i].NumberOfNodes == 0 { //TODO: actually handle requirements
+				if serviceInfo.Requirements.NotClusterAble {
+					sys.Services[i].NumberOfNodes = 1
+				} else {
+					sys.Services[i].NumberOfNodes = 3
+				}
+			}
+			sys.Services[i].Node = &ansible.Playbook{
+				Name:       serviceInfo.Name,
+				Hosts:      "localhost",
+				Connection: "local",
+				Vars: map[string]string{
+					"env":          env.Name,
+					"service":      serviceInfo.Name,
+					"service_type": serviceInfo.ServiceType,
+					"health_type":  serviceInfo.HealthType,
+				},
+			}
+			overrides := make([]string, len(serv.Override))
+			oi := 0
+			for k := range serv.Override {
+				overrides[oi] = k
+				oi++
+			}
+			var done []string
+			for _, dep := range serviceInfo.Dependencies {
+				if ArrayContains(overrides, dep) {
+					continue
+				}
+				AddTask(dep, sys.Services[i].Node, &done, systemRoles)
+			}
+
+		}
+		nerthusVars := map[string]string{
+			"region": "ap-northeast-1",
+			//"ami":    "ami-0bba69335379e17f8",
+		}
+
+		for i, serv := range sys.Services {
+			extraVars := map[string]any{
+				"system":  sys.Name,
+				"service": serv.Name,
+			}
+			if serv.Node != nil {
+				for k, v := range serv.Node.Vars {
+					if k == "service" {
+						continue
+					}
+					if k == "system" {
+						continue
+					}
+					if v == "" {
+						continue
+					}
+					extraVars[k] = v
+				}
+			}
+			for k, v := range env.Vars {
 				if v == "" {
 					continue
 				}
 				extraVars[k] = v
 			}
-		}
-		for k, v := range sys.Vars {
-			if v == "" {
-				continue
-			}
-			extraVars[k] = v
-		}
-		for k, v := range serv.Vars {
-			if v == "" {
-				continue
-			}
-			extraVars[k] = v
-		}
-		for k, v := range nerthusVars {
-			if v == "" {
-				continue
-			}
-			extraVars[k] = v
-		}
-
-		if v, ok := extraVars["key_name"]; !ok || v == nil || v == "" {
-			extraVars["key_name"] = fmt.Sprintf("%s-key", extraVars["system"])
-		}
-		if v, ok := extraVars["vpc_name"]; !ok || v == nil || v == "" {
-			extraVars["vpc_name"] = fmt.Sprintf("%s-vpc", extraVars["system"])
-		}
-		if v, ok := extraVars["node_names"]; !ok || v == nil {
-			if serv.NumberOfNodes == 1 {
-				extraVars["node_names"] = []string{
-					fmt.Sprintf("%s-%s", extraVars["system"], extraVars["service"]),
+			for k, v := range sys.Vars {
+				if v == "" {
+					continue
 				}
+				extraVars[k] = v
+			}
+			for k, v := range serv.Vars {
+				if v == "" {
+					continue
+				}
+				extraVars[k] = v
+			}
+			for k, v := range nerthusVars {
+				if v == "" {
+					continue
+				}
+				extraVars[k] = v
+			}
+
+			scope := sys.Name
+			log.Info("scope", "sys.Name", scope)
+			var extra string
+			if scope == "" {
+				scope = sys.Services[0].Name
+				log.Info("scope", "service", scope)
 			} else {
-				nodeNames := make([]string, serv.NumberOfNodes)
-				for num := 1; num <= serv.NumberOfNodes; num++ {
-					nodeNames[num-1] = fmt.Sprintf("%s-%s-%d", extraVars["system"], extraVars["service"], num)
+				extra = fmt.Sprintf("-%s", extraVars["service"])
+			}
+			nameBase := fmt.Sprintf("%s-%s", env.Name, scope)
+			extraVars["name_base"] = nameBase
+			if v, ok := extraVars["key_name"]; !ok || v == nil || v == "" {
+				extraVars["key_name"] = fmt.Sprintf("%s-key", nameBase)
+			}
+			if v, ok := extraVars["vpc_name"]; !ok || v == nil || v == "" {
+				extraVars["vpc_name"] = fmt.Sprintf("%s-vpc", nameBase)
+			}
+			log.Info("vars", "key_name", extraVars["key_name"], "vpc_name", extraVars["vpc_name"])
+			if v, ok := extraVars["node_names"]; !ok || v == nil {
+				if serv.NumberOfNodes == 1 {
+					extraVars["node_names"] = []string{
+						fmt.Sprintf("%s%s", nameBase, extra),
+					}
+				} else {
+					nodeNames := make([]string, serv.NumberOfNodes)
+					for num := 1; num <= serv.NumberOfNodes; num++ {
+						nodeNames[num-1] = fmt.Sprintf("%s%s-%d", nameBase, extra, num)
+					}
+					extraVars["node_names"] = nodeNames
 				}
-				extraVars["node_names"] = nodeNames
 			}
-		}
-		if v, ok := extraVars["security_group_name"]; !ok || v == nil || v == "" {
-			extraVars["security_group_name"] = fmt.Sprintf("%s-%s-sg", extraVars["system"], extraVars["service"])
-		}
-		if v, ok := extraVars["target_group_name"]; !ok || v == nil || v == "" {
-			extraVars["target_group_name"] = fmt.Sprintf("%s-%s-tg", extraVars["system"], extraVars["service"])
-		}
-		if v, ok := extraVars["loadbalancer_name"]; !ok || v == nil || v == "" {
-			extraVars["loadbalancer_name"] = fmt.Sprintf("%s-lb", extraVars["system"])
-		}
-		sys.Services[i].Vars = extraVars
+			if v, ok := extraVars["security_group_name"]; !ok || v == nil || v == "" {
+				extraVars["security_group_name"] = fmt.Sprintf("%s%s-sg", nameBase, extra)
+			}
+			if v, ok := extraVars["target_group_name"]; !ok || v == nil || v == "" {
+				extraVars["target_group_name"] = fmt.Sprintf("%s%s-tg", nameBase, extra)
+			}
+			if v, ok := extraVars["loadbalancer_name"]; !ok || v == nil || v == "" {
+				extraVars["loadbalancer_name"] = fmt.Sprintf("%s-lb", nameBase)
+			}
+			sys.Services[i].Vars = extraVars
 
-		for _, v := range serv.Override {
-			if !strings.HasPrefix(v, "services") {
-				continue
-			}
-			overrideService := strings.ReplaceAll(v, "services/", "")
-			for oi, overs := range sys.Services {
-				if overs.Name != overrideService {
+			for _, v := range serv.Override {
+				if !strings.HasPrefix(v, "services") {
 					continue
 				}
-				if len(overs.Expose) == 0 {
-					log.Fatal("trying to connect to a service that does not expose any ports", "from", serv, "to", overs)
+				overrideService := strings.ReplaceAll(v, "services/", "")
+				for oi, overs := range sys.Services {
+					if overs.Name != overrideService {
+						continue
+					}
+					if len(overs.Expose) == 0 {
+						log.Fatal("trying to connect to a service that does not expose any ports", "from", serv, "to", overs)
+					}
+					sys.Services[i].Vars[fmt.Sprintf("%s_host", overs.Name)] = fmt.Sprintf("%s.%s", overs.Name, sys.Services[i].Vars["zone"])
+					sgr := ansible.SecurityGroupRule{
+						Proto:    "tcp",
+						FromPort: strconv.Itoa(overs.Expose[0]),
+						ToPort:   strconv.Itoa(overs.Expose[0]),
+						Group:    fmt.Sprintf("%s-%s-sg", extraVars["system"], extraVars["service"]),
+					}
+					if overs.Vars["security_group_rules"] == nil {
+						sys.Services[oi].Vars["security_group_rules"] = []ansible.SecurityGroupRule{sgr}
+						continue
+					}
+					sys.Services[oi].Vars["security_group_rules"] = append(sys.Services[oi].Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
 				}
-				sys.Services[i].Vars[fmt.Sprintf("%s_host", overs.Name)] = fmt.Sprintf("%s.%s", overs.Name, sys.Services[i].Vars["zone"])
-				sgr := ansible.SecurityGroupRule{
-					Proto:    "tcp",
-					FromPort: strconv.Itoa(overs.Expose[0]),
-					ToPort:   strconv.Itoa(overs.Expose[0]),
-					Group:    fmt.Sprintf("%s-%s-sg", extraVars["system"], extraVars["service"]),
-				}
-				if overs.Vars["security_group_rules"] == nil {
-					sys.Services[oi].Vars["security_group_rules"] = []ansible.SecurityGroupRule{sgr}
-					continue
-				}
-				sys.Services[oi].Vars["security_group_rules"] = append(sys.Services[oi].Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
 			}
 		}
-	}
 
-	/*
-	   Rules:
-	     - Conditions:
-	         - Field: path-pattern
-	           Values:
-	             - "/{{ item.service }}"
-	             - "/{{ item.service }}/*"
-	       Actions:
-	         - TargetGroupName: "{{ item.target_group_name }}"
-	           Type: forward
-	       Priority: "{{ item.path_priority }}"
-	*/
-	i := 0
-	rules := []Rule{}
-	for _, serv := range sys.Services {
-		if serv.Playbook != "" {
-			continue
-		}
-		i++
-		rules = append(rules, Rule{
-			Conditions: []Condition{
+		/*
+		   Rules:
+		     - Conditions:
+		         - Field: path-pattern
+		           Values:
+		             - "/{{ item.service }}"
+		             - "/{{ item.service }}/*"
+		       Actions:
+		         - TargetGroupName: "{{ item.target_group_name }}"
+		           Type: forward
+		       Priority: "{{ item.path_priority }}"
+		*/
+		i := 0
+		rules := []Rule{}
+		var defaultAction []Action
+		if len(sys.Services) == 1 && sys.Services[0].ServiceInfo.Requirements.IsFrontend {
+			defaultAction = []Action{
 				{
-					Field: "path-pattern",
-					Values: []string{
-						fmt.Sprintf("/%s", serv.Vars["service"]),
-						fmt.Sprintf("/%s/*", serv.Vars["service"]),
-					},
-				},
-			},
-			Actions: []Action{
-				{
-					TargetGroupName: serv.Vars["target_group_name"].(string),
+					TargetGroupName: sys.Services[0].Vars["target_group_name"].(string),
 					Type:            "forward",
 				},
-			},
-			Priority: i,
-		})
-	}
-
-	var wg sync.WaitGroup
-	for _, serv := range sys.Services {
-		if serv.Playbook != "" {
-			wg.Wait()
-			AnsibleService(dir+"/nerthus/", serv, &bufPool)
-			continue
+			}
+		} else {
+			for _, serv := range sys.Services {
+				if serv.Playbook != "" {
+					continue
+				}
+				i++
+				rules = append(rules, Rule{
+					Conditions: []Condition{
+						{
+							Field: "path-pattern",
+							Values: []string{
+								fmt.Sprintf("/%s", serv.Vars["service"]),
+								fmt.Sprintf("/%s/*", serv.Vars["service"]),
+							},
+						},
+					},
+					Actions: []Action{
+						{
+							TargetGroupName: serv.Vars["target_group_name"].(string),
+							Type:            "forward",
+						},
+					},
+					Priority: i,
+				})
+			}
 		}
-		wg.Add(1)
-		go func(serv system.Service) {
-			AnsibleService(dir+"/nerthus/", serv, &bufPool)
-			wg.Done()
-		}(serv)
-	}
-	wg.Wait()
 
-	func() {
-		buff := bufPool.Get().(*bytes.Buffer)
-		defer bufPool.Put(buff)
+		var wg sync.WaitGroup
+		for _, serv := range sys.Services {
+			if serv.Playbook != "" {
+				wg.Wait()
+				AnsibleService(fmt.Sprintf("%s/%s/", dir, serv.Playbook), serv, &bufPool)
+				continue
+			}
+			wg.Add(1)
+			go func(serv system.Service) {
+				AnsibleService(dir+"/ansible/", serv, &bufPool)
+				wg.Done()
+			}(serv)
+		}
+		wg.Wait()
 
-		exec := execute.NewDefaultExecute(
-			execute.WithWrite(io.Writer(buff)),
-		)
+		func() {
+			buff := bufPool.Get().(*bytes.Buffer)
+			defer bufPool.Put(buff)
 
-		ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
-			ExtraVars: map[string]interface{}{
+			exec := execute.NewDefaultExecute(
+				execute.WithWrite(io.Writer(buff)),
+			)
+			scope := sys.Name
+			log.Info("scope", "sys.Name", scope)
+			if scope == "" {
+				scope = sys.Services[0].Name
+				log.Info("scope", "service", scope)
+			}
+			nameBase := fmt.Sprintf("%s-%s", env.Name, scope)
+			extraVars := map[string]interface{}{
 				"rules":             rules,
-				"vpc_name":          fmt.Sprintf("%s-vpc", sys.Name),
-				"certificate_arn":   "arn:aws:acm:ap-northeast-1:217183500018:certificate/31f4a295-84f3-46b2-b9a6-96100d474e46",
-				"loadbalancer_name": fmt.Sprintf("%s-lb", sys.Name),
-			},
-		}
-		play := "loadbalancer.yml"
-		pb := &playbook.AnsiblePlaybookCmd{
-			Playbooks:      []string{"example/ansible/" + play},
-			Exec:           exec,
-			StdoutCallback: "json",
-			Options:        ansiblePlaybookOptions,
-		}
+				"vpc_name":          fmt.Sprintf("%s-vpc", nameBase),
+				"certificate_arn":   "arn:aws:acm:ap-northeast-1:217183500018:certificate/31f4a295-84f3-46b2-b9a6-96100d474e46", //TODO: move to use a var path from system
+				"loadbalancer_name": fmt.Sprintf("%s-lb", nameBase),
+			}
+			if defaultAction != nil {
+				extraVars["default_actions"] = defaultAction
+			}
+			ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+				ExtraVars: extraVars,
+			}
+			play := "loadbalancer.yml"
+			pb := &playbook.AnsiblePlaybookCmd{
+				Playbooks:      []string{dir + "/ansible/" + play},
+				Exec:           exec,
+				StdoutCallback: "json",
+				Options:        ansiblePlaybookOptions,
+			}
 
-		err = pb.Run(context.Background())
-		if err != nil {
-			log.WithError(err).Error("while running ansible playbook")
-			//return
-		}
+			err = pb.Run(context.Background())
+			if err != nil {
+				log.WithError(err).Error("while running ansible playbook")
+				//return
+			}
 
-		res, err := results.ParseJSONResultsStream(io.Reader(buff))
-		if err != nil {
-			log.WithError(err).Fatal("while parsing json result stream")
-			//panic(err)
-		}
+			res, err := results.ParseJSONResultsStream(io.Reader(buff))
+			if err != nil {
+				log.WithError(err).Fatal("while parsing json result stream")
+				//panic(err)
+			}
 
-		for _, play := range res.Plays {
-			for _, task := range play.Tasks {
-				for _, content := range task.Hosts {
-					status := "Finished"
-					if content.Changed {
-						status = "Changed"
-					} else if content.Failed {
-						status = "Failed"
-					} else if content.Skipped {
-						status = "Skipped: " + content.SkipReason
-					}
-					log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
-					if status == "Failed" {
-						log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
+			for _, play := range res.Plays {
+				for _, task := range play.Tasks {
+					for _, content := range task.Hosts {
+						status := "Finished"
+						if content.Changed {
+							status = "Changed"
+						} else if content.Failed {
+							status = "Failed"
+						} else if content.Skipped {
+							status = "Skipped: " + content.SkipReason
+						}
+						log.Info(task.Task.Name, "status", status, "output", fmt.Sprint(content.Msg))
+						if status == "Failed" {
+							log.Fatal("runbook failed", "stdout", content.StdoutLines, "stderr", content.StderrLines)
+						}
 					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	log.Fatal("f")
 	portString := os.Getenv("webserver.port")
@@ -728,6 +720,31 @@ type Rule struct {
 func AnsibleService(dir string, serv system.Service, bufPool *sync.Pool) {
 	buff := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buff)
+	os.Mkdir(dir+"nodes", 0750)
+
+	if serv.Node != nil {
+		for k := range serv.Node.Vars {
+			cur, ok := serv.Vars[k]
+			if !ok || cur == nil {
+				continue
+			}
+			log.Info("server node vars", "key", k, "val", cur)
+			serv.Node.Vars[k] = fmt.Sprint(cur)
+		}
+		for i, name := range serv.Vars["node_names"].([]string) {
+			serv.Node.Vars["host"] = name
+			serv.Node.Vars["server_number"] = strconv.Itoa(i)
+			out, err := yaml.Marshal([]ansible.Playbook{
+				*serv.Node,
+			})
+			if err != nil {
+				log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
+			}
+			fn := fmt.Sprintf("%snodes/%s.yml", dir, serv.Node.Vars["host"])
+			os.Remove(fn)
+			os.WriteFile(fn, out, 0644)
+		}
+	}
 
 	exec := execute.NewDefaultExecute(
 		execute.WithWrite(io.Writer(buff)),
@@ -742,7 +759,7 @@ func AnsibleService(dir string, serv system.Service, bufPool *sync.Pool) {
 	}
 	play = "bootstrap-provision.yml"
 	pb := &playbook.AnsiblePlaybookCmd{
-		Playbooks:      []string{dir + "ansible/" + play},
+		Playbooks:      []string{dir + play},
 		Exec:           exec,
 		StdoutCallback: "json",
 		Options:        ansiblePlaybookOptions,
@@ -778,29 +795,35 @@ func AnsibleService(dir string, serv system.Service, bufPool *sync.Pool) {
 			}
 		}
 	}
+}
 
-	if serv.Node == nil {
-		return
-	}
-	for k := range serv.Node.Vars {
-		cur, ok := serv.Vars[k]
-		if !ok || cur == nil {
-			continue
+func ReadRoleDir(dir fs.FS, path string, roles map[string]ansible.Role) error {
+	_, err := dir.Open(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
 		}
-		log.Info("server node vars", "key", k, "val", cur)
-		serv.Node.Vars[k] = fmt.Sprint(cur)
+		return err
 	}
-	for i, name := range serv.Vars["node_names"].([]string) {
-		serv.Node.Vars["host"] = name
-		serv.Node.Vars["server_number"] = strconv.Itoa(i)
-		out, err := yaml.Marshal(serv.Node)
+	return fs.WalkDir(dir, path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
-			return
+			return err
 		}
-		fn := fmt.Sprintf("ansible/%s.yml", serv.Node.Vars["host"])
-		os.Remove(fn)
-		os.WriteFile(fn, out, 0644)
-		//log.Info("node playbook", "node", serv.Node, "yaml", string(out))
-	}
+		if d.IsDir() {
+			return nil
+		}
+		b, err := fs.ReadFile(dir, path)
+		if err != nil {
+			return err
+		}
+		var role ansible.Role
+		err = yaml.Unmarshal(b, &role)
+		if err != nil {
+			return err
+		}
+		name := strings.TrimSuffix(d.Name(), ".yml")
+		role.Id = name
+		roles[name] = role
+		return nil
+	})
 }

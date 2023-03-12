@@ -3,5 +3,8 @@ dependencies:
   - role: zulu_repo
 tasks:
   - name: Install Java 8
-    ansible.builtin.shell: |
-      yum install -y zulu8-jdk
+    ansible.builtin.yum:
+      name: zulu8-jdk
+      state: latest
+    become: yes
+    become_user: root

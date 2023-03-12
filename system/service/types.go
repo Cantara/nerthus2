@@ -13,4 +13,5 @@ type Requirements struct {
 	CPU            int    `yaml:"cpu"`
 	Properties     string `yaml:"properties"`
 	NotClusterAble bool   `yaml:"not_cluster_able"`
+	IsFrontend     bool   `yaml:"is_frontend"`
 }

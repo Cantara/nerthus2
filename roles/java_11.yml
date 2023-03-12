@@ -3,5 +3,8 @@ dependencies:
   - role: zulu_repo
 tasks:
   - name: Install Java 11
-    ansible.builtin.shell: |
-      yum install -y zulu11-jdk
+    ansible.builtin.yum:
+      name: zulu11-jdk
+      state: latest
+    become: yes
+    become_user: root

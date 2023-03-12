@@ -1,10 +1,18 @@
 package system
 
-import "github.com/cantara/nerthus2/ansible"
+import (
+	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/system/service"
+)
+
+type Environment struct {
+	Name    string   `yaml:"name"`
+	Vars    Vars     `yaml:"vars"`
+	Systems []string `yaml:"systems"`
+}
 
 type System struct {
 	Name     string    `yaml:"name"`
-	Env      string    `yaml:"env"`
 	Vars     Vars      `yaml:"vars"`
 	Services []Service `yaml:"services"`
 }
@@ -22,5 +30,6 @@ type Service struct {
 	Override      map[string]string `yaml:"override,omitempty"`
 	Internal      bool              `yaml:"internal"`
 	NumberOfNodes int               `yaml:"number_of_nodes"`
-	Node          *ansible.Playbook `yaml:"-,omitempty"`
+	Node          *ansible.Playbook `yaml:",omitempty"`
+	ServiceInfo   *service.Service  `yaml:",omitempty"`
 }
