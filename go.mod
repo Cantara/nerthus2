@@ -1,6 +1,6 @@
 module github.com/cantara/nerthus2
 
-go 1.19
+go 1.20
 
 require (
 	github.com/apenella/go-ansible v1.1.7

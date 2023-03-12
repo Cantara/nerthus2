@@ -12,9 +12,14 @@ type Environment struct {
 }
 
 type System struct {
-	Name     string    `yaml:"name"`
-	Vars     Vars      `yaml:"vars"`
-	Services []Service `yaml:"services"`
+	Name              string    `yaml:"name"`
+	Vars              Vars      `yaml:"vars"`
+	Services          []Service `yaml:"services"`
+	Scope             string    `yaml:"scope"`
+	VPC               string    `yaml:"vpc"`
+	Key               string    `yaml:"key"`
+	Loadbalancer      string    `yaml:"loadbalancer"`
+	LoadbalancerGroup string    `yaml:"loadbalancerGroup"`
 }
 
 type Vars map[string]any
@@ -30,6 +35,10 @@ type Service struct {
 	Override      map[string]string `yaml:"override,omitempty"`
 	Internal      bool              `yaml:"internal"`
 	NumberOfNodes int               `yaml:"number_of_nodes"`
+	NodeNames     []string          `yaml:"node_names"`
+	SecurityGroup string            `yaml:"security_group"`
+	TargetGroup   string            `yaml:"target_group"`
+	WebserverPort *int              `yaml:"webserver_port,omitempty"`
 	Node          *ansible.Playbook `yaml:",omitempty"`
 	ServiceInfo   *service.Service  `yaml:",omitempty"`
 }
