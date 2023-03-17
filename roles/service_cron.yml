@@ -24,9 +24,9 @@ tasks:
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t {{ health_type }} -a {{ service }} -g {{ artifact_group }} -r > /dev/null
-          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}/{{ service }}/health" -a "{{ service }}" -t "{{ health_type }}" {{ '-b' if is_frontend }} > /dev/null &
+          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}/health" -a "{{ service }}" -t "{{ health_type }}" > /dev/null &
         dest: "/home/{{ service }}/CRON"
-        mode: 0640
+        mode: '0640'
       register: service_cron
     - name: Remove cronjob from crontab scheduler
       shell: crontab -r
