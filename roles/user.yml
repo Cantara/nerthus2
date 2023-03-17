@@ -7,6 +7,7 @@ tasks:
       name: "{{ service }}"
       comment: "User for {{ service }}"
       home: "/home/{{ service }}"
+    register: service_user
     become: yes
     become_user: root
   - name: Set su file

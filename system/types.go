@@ -7,6 +7,7 @@ import (
 
 type Environment struct {
 	Name    string   `yaml:"name"`
+	Cert    string   `yaml:"certificate_arn"`
 	Vars    Vars     `yaml:"vars"`
 	Systems []string `yaml:"systems"`
 }
@@ -25,20 +26,22 @@ type System struct {
 type Vars map[string]any
 
 type Service struct {
-	Name          string            `yaml:"name"`
-	Vars          Vars              `yaml:"vars"`
-	Expose        []int             `yaml:"expose,omitempty"`
-	Playbook      string            `yaml:"playbook,omitempty"`
-	Local         string            `yaml:"local,omitempty"`
-	Git           string            `yaml:"git,omitempty"`
-	Branch        string            `yaml:"branch,omitempty"`
-	Override      map[string]string `yaml:"override,omitempty"`
-	Internal      bool              `yaml:"internal"`
-	NumberOfNodes int               `yaml:"number_of_nodes"`
-	NodeNames     []string          `yaml:"node_names"`
-	SecurityGroup string            `yaml:"security_group"`
-	TargetGroup   string            `yaml:"target_group"`
-	WebserverPort *int              `yaml:"webserver_port,omitempty"`
-	Node          *ansible.Playbook `yaml:",omitempty"`
-	ServiceInfo   *service.Service  `yaml:",omitempty"`
+	Name          string             `yaml:"name"`
+	Vars          Vars               `yaml:"vars"`
+	Expose        []int              `yaml:"expose,omitempty"`
+	Playbook      string             `yaml:"playbook,omitempty"`
+	Local         string             `yaml:"local,omitempty"`
+	Git           string             `yaml:"git,omitempty"`
+	Branch        string             `yaml:"branch,omitempty"`
+	Override      map[string]string  `yaml:"override,omitempty"`
+	Internal      bool               `yaml:"internal"`
+	NumberOfNodes int                `yaml:"number_of_nodes"`
+	NodeNames     []string           `yaml:"node_names"`
+	SecurityGroup string             `yaml:"security_group"`
+	TargetGroup   string             `yaml:"target_group"`
+	WebserverPort *int               `yaml:"webserver_port,omitempty"`
+	Properties    *string            `yaml:"properties,omitempty"`
+	Files         *map[string]string `yaml:"files,omitempty"`
+	Node          *ansible.Playbook  `yaml:",omitempty"`
+	ServiceInfo   *service.Service   `yaml:",omitempty"`
 }

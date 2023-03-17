@@ -25,7 +25,7 @@ func main() {
 	if os.Getenv("aws.profile") != "" {
 		opts = append(opts, config.WithSharedConfigProfile(os.Getenv("aws.profile")))
 	} else {
-		opts = append(opts, config.WithDefaultRegion("ap-northeast-1"))
+		opts = append(opts, config.WithDefaultRegion("eu-central-1"))
 	}
 	sess, err := config.LoadDefaultConfig(context.TODO(), opts...,
 	)

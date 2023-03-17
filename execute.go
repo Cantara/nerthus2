@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 func Execute(dir string) {
@@ -27,7 +28,7 @@ func Execute(dir string) {
 	roles := make(map[string]ansible.Role)
 	err := ReadRoleDir(EFS, "roles", roles)
 	if err != nil {
-		log.WithError(err).Fatal("while reading env roles")
+		log.WithError(err).Fatal("while reading builtin roles")
 	}
 	envFS := os.DirFS(dir)
 	env, err := LoadConfig[system.Environment](dir)
@@ -62,6 +63,7 @@ func Execute(dir string) {
 					ExecutePrivisioning(dir+"/ansible/", serv, &bufPool)
 					wg.Done()
 				}(serv)
+				time.Sleep(5 * time.Second)
 			}
 			wg.Wait()
 			ExecuteLoadbalancer(dir, rules, defaultAction, sys, env)
@@ -92,18 +94,21 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 	}
 	sys, err = LoadConfig[system.System](fmt.Sprintf("%s/%s", dir, systemDir))
 	if err != nil {
-		log.WithError(err).Fatal("while loading system config")
+		log.WithError(err).Info("while loading system config", "dir", dir, "systemDir", systemDir)
+		log.WithError(err).Warning("while loading system config", "dir", dir, "systemDir", systemDir)
+		log.WithError(err).Error("while loading system config", "dir", dir, "systemDir", systemDir)
+		log.WithError(err).Fatal("while loading system config", "dir", dir, "systemDir", systemDir)
 	}
 
-	nameBase := sys.Name
-	if nameBase == "" {
+	systemName := sys.Name
+	if systemName == "" {
 		if len(sys.Services) > 1 {
 			log.Fatal("No system name and more than one service in the system")
 		}
-		nameBase = sys.Services[0].Name
+		systemName = sys.Services[0].Name
 	}
 	if sys.Scope == "" {
-		sys.Scope = fmt.Sprintf("%s-%s", env.Name, nameBase)
+		sys.Scope = fmt.Sprintf("%s-%s", env.Name, systemName)
 	}
 	if sys.VPC == "" {
 		sys.VPC = fmt.Sprintf("%s-vpc", sys.Scope)
@@ -149,6 +154,12 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 				continue
 			}
 		}
+		if serv.Properties != nil && !ArrayContains(serviceInfo.Dependencies, "local_override") {
+			serviceInfo.Dependencies = append(serviceInfo.Dependencies, "local_override")
+		}
+		if serv.Files != nil && !ArrayContains(serviceInfo.Dependencies, "service_files") {
+			serviceInfo.Dependencies = append(serviceInfo.Dependencies, "service_files")
+		}
 		sys.Services[i].ServiceInfo = &serviceInfo
 		if sys.Services[i].NumberOfNodes == 0 { //TODO: actually handle requirements
 			if serviceInfo.Requirements.NotClusterAble {
@@ -161,7 +172,7 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 			Name:       serviceInfo.Name,
 			Hosts:      "localhost",
 			Connection: "local",
-			Vars: map[string]string{
+			Vars: map[string]any{
 				"env":          env.Name,
 				"service":      serviceInfo.Name,
 				"service_type": serviceInfo.ServiceType,
@@ -184,23 +195,23 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 
 	}
 	nerthusVars := map[string]string{
-		"region": "ap-northeast-1",
+		"region": os.Getenv("aws.region"), //"eu-central-1", //"ap-northeast-1",
 	}
 
 	for i, serv := range sys.Services {
 		extraVars := map[string]any{}
-		AddVars(serv.Node.Vars, extraVars)
+		//AddVars(serv.Node.Vars, extraVars)
 		AddVars(env.Vars, extraVars)
 		AddVars(sys.Vars, extraVars)
 		AddVars(serv.Vars, extraVars)
 		AddVars(nerthusVars, extraVars)
 
 		var extra string
-		if nameBase != serv.Name {
+		if systemName != serv.Name {
 			extra = fmt.Sprintf("-%s", serv.Name)
 		}
 
-		extraVars["system"] = sys.Name
+		extraVars["system"] = systemName
 		extraVars["service"] = serv.Name
 		extraVars["name_base"] = sys.Scope
 		extraVars["vpc_name"] = sys.VPC
@@ -228,11 +239,11 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 			serv.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
 		}
 		extraVars["security_group_name"] = serv.SecurityGroup
-		if serv.TargetGroup == "" {
+		if serv.TargetGroup == "" && serv.WebserverPort != nil {
 			serv.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
 		}
 		extraVars["target_group_name"] = serv.TargetGroup
-		sys.Services[i].Vars = extraVars
+		serv.Vars = extraVars
 
 		if serv.Vars["security_group_rules"] == nil {
 			serv.Vars["security_group_rules"] = []ansible.SecurityGroupRule{}
@@ -245,6 +256,7 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 				Group:    sys.LoadbalancerGroup,
 			}
 			serv.Vars["security_group_rules"] = append(serv.Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
+			serv.Vars["webserver_port"] = strconv.Itoa(*serv.WebserverPort)
 		}
 
 		for _, v := range serv.Override {
@@ -272,14 +284,16 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 				sys.Services[oi].Vars["security_group_rules"] = append(sys.Services[oi].Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
 			}
 		}
+		sys.Services[i].Vars = serv.Vars
+		AddVars(serv.Vars, sys.Services[i].Node.Vars)
 	}
 	return
 }
 
 func AddVars[T comparable](inVars map[string]T, outVars map[string]any) {
 	for k, v := range inVars {
-		var zero T
-		if v == zero { //Excluding all zero values might not be optimal for items like ints.
+		//var zero T
+		if fmt.Sprint(v) == "" { //v == zero { //Excluding all zero values might not be optimal for items like ints.
 			continue
 		}
 		outVars[k] = v
@@ -299,6 +313,9 @@ func BuildLoadbalancerSetup(sys system.System) (rules []Rule, defaultAction []Ac
 	} else {
 		for _, serv := range sys.Services {
 			if serv.Playbook != "" {
+				continue
+			}
+			if serv.Vars["target_group_name"] == nil || serv.Vars["target_group_name"] == "" {
 				continue
 			}
 			i++
@@ -331,24 +348,58 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 	os.Mkdir(dir+"nodes", 0750)
 
 	if serv.Node != nil {
-		for k := range serv.Node.Vars {
-			cur, ok := serv.Vars[k]
-			if !ok || cur == nil {
-				continue
-			}
-			log.Info("server node vars", "key", k, "val", cur)
-			serv.Node.Vars[k] = fmt.Sprint(cur)
-		}
 		for i, name := range serv.Vars["node_names"].([]string) {
-			serv.Node.Vars["host"] = name
+			serv.Node.Vars["hostname"] = name
 			serv.Node.Vars["server_number"] = strconv.Itoa(i)
+
+			if serv.Properties != nil {
+				properties := ""
+				if serv.Properties != nil {
+					properties = *serv.Properties
+				}
+				if serv.WebserverPort != nil {
+					if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
+						log.Fatal("Webserver port and properties file provided without providing webserver_port_key")
+					}
+					lines := strings.Split(properties, "\n")
+					found := false
+					for l, line := range lines {
+						if !strings.HasPrefix(line, serv.ServiceInfo.Requirements.WebserverPortKey) {
+							continue
+						}
+						lines[l] = fmt.Sprintf("%s=%d", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort)
+						found = true
+						break
+					}
+					if found {
+						properties = strings.Join(lines, "\n")
+					} else {
+						properties = fmt.Sprintf("%s=%d\n%s", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort, properties)
+					}
+				}
+				serv.Node.Vars["properties_name"] = serv.ServiceInfo.Requirements.PropertiesName
+				serv.Node.Vars["local_override_content"] = properties
+			}
+			if serv.Files != nil {
+				files := make([]File, len(*serv.Files))
+				fileNum := 0
+				for name, content := range *serv.Files {
+					files[fileNum] = File{
+						Name:    name,
+						Content: content,
+					}
+					fileNum++
+				}
+				serv.Node.Vars["files"] = files
+			}
+			serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
 			out, err := yaml.Marshal([]ansible.Playbook{
 				*serv.Node,
 			})
 			if err != nil {
 				log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
 			}
-			fn := fmt.Sprintf("%snodes/%s.yml", dir, serv.Node.Vars["host"])
+			fn := fmt.Sprintf("%snodes/%s.yml", dir, serv.Node.Vars["hostname"])
 			os.Remove(fn)
 			os.WriteFile(fn, out, 0644)
 		}
@@ -406,24 +457,21 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 }
 
 func ExecuteLoadbalancer(dir string, rules []Rule, defaultAction []Action, sys system.System, env system.Environment) {
+	if len(rules) == 0 && len(defaultAction) == 0 {
+		return
+	}
 	buff := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buff)
 
 	exec := execute.NewDefaultExecute(
 		execute.WithWrite(io.Writer(buff)),
 	)
-	scope := sys.Name
-	log.Info("scope", "sys.Name", scope)
-	if scope == "" {
-		scope = sys.Services[0].Name
-		log.Info("scope", "service", scope)
-	}
-	nameBase := fmt.Sprintf("%s-%s", env.Name, scope)
 	extraVars := map[string]interface{}{
+		"region":            os.Getenv("aws.region"),
 		"rules":             rules,
-		"vpc_name":          fmt.Sprintf("%s-vpc", nameBase),
-		"certificate_arn":   "arn:aws:acm:ap-northeast-1:217183500018:certificate/31f4a295-84f3-46b2-b9a6-96100d474e46", //TODO: move to use a var path from system
-		"loadbalancer_name": fmt.Sprintf("%s-lb", nameBase),
+		"vpc_name":          sys.VPC,
+		"certificate_arn":   env.Cert,
+		"loadbalancer_name": sys.Loadbalancer,
 	}
 	if defaultAction != nil {
 		extraVars["default_actions"] = defaultAction
@@ -469,4 +517,33 @@ func ExecuteLoadbalancer(dir string, rules []Rule, defaultAction []Action, sys s
 			}
 		}
 	}
+}
+
+type File struct {
+	Name    string `yaml:"name"`
+	Content string `yaml:"content"`
+}
+
+func AddTask(role string, pb *ansible.Playbook, done *[]string, roles map[string]ansible.Role) {
+	if ArrayContains(*done, role) {
+		return
+	}
+	r, ok := roles[role]
+	if !ok {
+		return
+	}
+	for _, req := range r.Dependencies {
+		AddTask(req.Role, pb, done, roles)
+	}
+	AddVars(r.Vars, pb.Vars)
+	/*
+		for vn, vv := range r.Vars {
+			if pb.Vars[vn] != "" {
+				continue
+			}
+			pb.Vars[vn] = vv
+		}
+	*/
+	pb.Tasks = append(pb.Tasks, r.Tasks...)
+	*done = append(*done, r.Id)
 }

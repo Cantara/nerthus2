@@ -7,15 +7,15 @@ tasks:
       yum:
         name: docker
         state: latest
-    - name: Starting and Enabling Docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
     - name: Add docker group to ec2-user
       ansible.builtin.user:
         name: "{{ username }}"
         groups: docker
         append: yes
+    - name: Starting and Enabling Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
     become: yes
     become_user: root

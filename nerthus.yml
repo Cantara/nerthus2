@@ -1,6 +1,7 @@
 name: Nerthus
 service_type: H2A
 health_type: go
+artifact_group: no/cantara/gotools
 dependencies:
   - service
 requirements:

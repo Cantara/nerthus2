@@ -1,11 +1,11 @@
 package ansible
 
 type Playbook struct {
-	Name       string            `yaml:"name"`
-	Hosts      string            `yaml:"hosts"`
-	Connection string            `yaml:"connection"`
-	Vars       map[string]string `yaml:"vars"`
-	Tasks      []map[string]any  `yaml:"tasks"`
+	Name       string           `yaml:"name"`
+	Hosts      string           `yaml:"hosts"`
+	Connection string           `yaml:"connection"`
+	Vars       map[string]any   `yaml:"vars"`
+	Tasks      []map[string]any `yaml:"tasks"`
 }
 
 type Role struct {

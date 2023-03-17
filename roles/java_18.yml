@@ -1,0 +1,10 @@
+name: Install Java 18
+dependencies:
+  - role: zulu_repo
+tasks:
+  - name: Install Java 18
+    ansible.builtin.yum:
+      name: zulu18-jdk
+      state: latest
+    become: yes
+    become_user: root

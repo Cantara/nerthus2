@@ -35,9 +35,9 @@ import (
 var EFS embed.FS
 
 var bootstrap bool
-var gitRepo string
-var gitToken string
-var systemName string
+var bootstrapGitRepo string
+var bootstrapGitToken string
+var bootstrapSystemName string
 
 func init() {
 	const ( //TODO: Add bootstrap git as a separate command from bootstrap.
@@ -52,12 +52,12 @@ func init() {
 	)
 	flag.BoolVar(&bootstrap, "bootstrap", defaultBootstrap, bootstrapUsage)
 	flag.BoolVar(&bootstrap, "b", defaultBootstrap, bootstrapUsage+" (shorthand)")
-	flag.StringVar(&gitRepo, "git-repo", defaultGitRepo, gitRepoUsage)
-	flag.StringVar(&gitRepo, "r", defaultGitRepo, gitRepoUsage+" (shorthand)")
-	flag.StringVar(&gitToken, "git-token", defaultGitToken, gitTokenUsage)
-	flag.StringVar(&gitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
-	flag.StringVar(&systemName, "system-name", defaultSystemName, systemNameUsage)
-	flag.StringVar(&systemName, "n", defaultSystemName, systemNameUsage+" (shorthand)")
+	flag.StringVar(&bootstrapGitRepo, "git-repo", defaultGitRepo, gitRepoUsage)
+	flag.StringVar(&bootstrapGitRepo, "r", defaultGitRepo, gitRepoUsage+" (shorthand)")
+	flag.StringVar(&bootstrapGitToken, "git-token", defaultGitToken, gitTokenUsage)
+	flag.StringVar(&bootstrapGitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
+	flag.StringVar(&bootstrapSystemName, "system-name", defaultSystemName, systemNameUsage)
+	flag.StringVar(&bootstrapSystemName, "n", defaultSystemName, systemNameUsage+" (shorthand)")
 }
 
 var bufPool = sync.Pool{
@@ -69,10 +69,10 @@ var bufPool = sync.Pool{
 func main() {
 	flag.Parse()
 	bootstrap = true
-	gitToken = "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"
-	gitRepo = "github.com/SindreBrurberg/nerthus-test-config"
+	bootstrapGitToken = "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"
+	bootstrapGitRepo = "github.com/SindreBrurberg/nerthus-test-config"
 
-	dir := "greps" //"tmp-test-dir"
+	dir := "exoreaction" //"tmp-test-dir"
 	Execute(dir)
 
 	log.Fatal("f")
@@ -238,27 +238,6 @@ func ArrayContains(arr []string, val string) bool {
 		}
 	}
 	return false
-}
-
-func AddTask(role string, pb *ansible.Playbook, done *[]string, roles map[string]ansible.Role) {
-	if ArrayContains(*done, role) {
-		return
-	}
-	r, ok := roles[role]
-	if !ok {
-		return
-	}
-	for _, req := range r.Dependencies {
-		AddTask(req.Role, pb, done, roles)
-	}
-	for vn, vv := range r.Vars {
-		if pb.Vars[vn] != "" {
-			continue
-		}
-		pb.Vars[vn] = vv
-	}
-	pb.Tasks = append(pb.Tasks, r.Tasks...)
-	*done = append(*done, r.Id)
 }
 
 func GetService(u *url.URL) (serv service.Service, err error) {

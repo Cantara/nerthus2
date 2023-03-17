@@ -1,5 +1,6 @@
 name: Add service
 dependencies:
+  - role: utf8
   - role: user
   - role: buri
   - role: cron
