@@ -259,8 +259,13 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 			serv.Vars["webserver_port"] = strconv.Itoa(*serv.WebserverPort)
 		}
 
+		sys.Services[i] = serv
+		AddVars(serv.Vars, sys.Services[i].Node.Vars)
+	}
+	//Add overrides
+	for i, serv := range sys.Services {
 		for _, v := range serv.Override {
-			if !strings.HasPrefix(v, "services") {
+			if strings.HasPrefix(v, "ansible") {
 				continue
 			}
 			overrideService := strings.ReplaceAll(v, "services/", "")
@@ -284,8 +289,6 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 				sys.Services[oi].Vars["security_group_rules"] = append(sys.Services[oi].Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
 			}
 		}
-		sys.Services[i].Vars = serv.Vars
-		AddVars(serv.Vars, sys.Services[i].Node.Vars)
 	}
 	return
 }
