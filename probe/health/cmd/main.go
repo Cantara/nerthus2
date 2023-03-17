@@ -29,6 +29,7 @@ var reportURLString string
 var healthURLString string
 var serviceTypeSelectedString string
 var artifactID string
+var atBase bool
 
 func init() {
 	const (
@@ -44,6 +45,8 @@ func init() {
 		serviceTypeUsage   = "type of service to probe. default, java, jar, go, eventstore, es"
 		defaultArtifactID  = ""
 		artifactIDUsage    = "artifact to probe health from"
+		defaultAtBase      = false
+		atBaseUsage        = "if health endpoint is in the base path"
 	)
 	flag.DurationVar(&duration, "duration", defaultDuration, durationUsage)
 	flag.DurationVar(&duration, "d", defaultDuration, durationUsage+" (shorthand)")
@@ -57,6 +60,8 @@ func init() {
 	flag.StringVar(&serviceTypeSelectedString, "t", defaultServiceType, serviceTypeUsage+" (shorthand)")
 	flag.StringVar(&artifactID, "artifact-id", defaultArtifactID, artifactIDUsage)
 	flag.StringVar(&artifactID, "a", defaultArtifactID, artifactIDUsage+" (shorthand)")
+	flag.BoolVar(&atBase, "at-base", defaultAtBase, atBaseUsage)
+	flag.BoolVar(&atBase, "b", defaultAtBase, atBaseUsage+" (shorthand)")
 }
 
 var version string

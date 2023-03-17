@@ -358,6 +358,7 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 					properties = *serv.Properties
 				}
 				if serv.WebserverPort != nil {
+					serv.Node.Vars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
 					if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
 						log.Fatal("Webserver port and properties file provided without providing webserver_port_key")
 					}

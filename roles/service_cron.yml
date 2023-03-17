@@ -12,6 +12,7 @@ vars:
   service_type:
   health_type:
   hostname:
+  is_frontend: false
 tasks:
   - set_fact:
       visuale: "https://{{ visuale_host }}/api/status/{{ env }}/{{ service | capitalize }}/{{ hostname }}?service_tag={{ service_tag }}&service_type={{ service_type }}"
@@ -23,7 +24,7 @@ tasks:
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t {{ health_type }} -a {{ service }} -g {{ artifact_group }} -r > /dev/null
-          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}/{{ service }}/health" -a "{{ service }}" -t "{{ health_type }}" > /dev/null &
+          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}/{{ service }}/health" -a "{{ service }}" -t "{{ health_type }}" {{ '-b' if is_frontend }} > /dev/null &
         dest: "/home/{{ service }}/CRON"
         mode: 0640
       register: service_cron
