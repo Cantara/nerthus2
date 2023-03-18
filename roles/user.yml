@@ -17,3 +17,4 @@ tasks:
         sudo su - {{ service }}
       dest: "~/su_{{ service }}.sh"
       mode: u+rwx
+    when: service != "ec2-user"

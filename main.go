@@ -19,25 +19,30 @@ import (
 	"github.com/cantara/nerthus2/message"
 	"github.com/cantara/nerthus2/system/service"
 	"github.com/gin-gonic/gin"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 //go:embed roles bootstrap
 var EFS embed.FS
 
 var bootstrap bool
-var bootstrapGitRepo string
-var bootstrapGitToken string
-var bootstrapSystemName string
+var gitRepo string
+var gitToken string
+var bootstrapEnv string
 
 func init() {
 	const ( //TODO: Add bootstrap git as a separate command from bootstrap.
@@ -47,17 +52,17 @@ func init() {
 		gitRepoUsage      = "github repository for solution config"
 		defaultGitToken   = ""
 		gitTokenUsage     = "github repository granular access token"
-		defaultSystemName = "nerthus2"
+		defaultSystemName = "exoreaction_demo"
 		systemNameUsage   = "defines the system that Nerthus should use to provision itself"
 	)
 	flag.BoolVar(&bootstrap, "bootstrap", defaultBootstrap, bootstrapUsage)
 	flag.BoolVar(&bootstrap, "b", defaultBootstrap, bootstrapUsage+" (shorthand)")
-	flag.StringVar(&bootstrapGitRepo, "git-repo", defaultGitRepo, gitRepoUsage)
-	flag.StringVar(&bootstrapGitRepo, "r", defaultGitRepo, gitRepoUsage+" (shorthand)")
-	flag.StringVar(&bootstrapGitToken, "git-token", defaultGitToken, gitTokenUsage)
-	flag.StringVar(&bootstrapGitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
-	flag.StringVar(&bootstrapSystemName, "system-name", defaultSystemName, systemNameUsage)
-	flag.StringVar(&bootstrapSystemName, "n", defaultSystemName, systemNameUsage+" (shorthand)")
+	flag.StringVar(&gitRepo, "git-repo", defaultGitRepo, gitRepoUsage)
+	flag.StringVar(&gitRepo, "r", defaultGitRepo, gitRepoUsage+" (shorthand)")
+	flag.StringVar(&gitToken, "git-token", defaultGitToken, gitTokenUsage)
+	flag.StringVar(&gitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
+	flag.StringVar(&bootstrapEnv, "environment", defaultSystemName, systemNameUsage)
+	flag.StringVar(&bootstrapEnv, "e", defaultSystemName, systemNameUsage+" (shorthand)")
 }
 
 var bufPool = sync.Pool{
@@ -68,14 +73,18 @@ var bufPool = sync.Pool{
 
 func main() {
 	flag.Parse()
-	bootstrap = true
-	bootstrapGitToken = "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"
-	bootstrapGitRepo = "github.com/SindreBrurberg/nerthus-test-config"
-
-	dir := "exoreaction" //"tmp-test-dir"
-	Execute(dir)
-
-	log.Fatal("f")
+	if bootstrap {
+		_, err := GitCloneEnvironment(bootstrapEnv)
+		if err != nil {
+			log.WithError(err).Fatal("while cloning git repo during bootstrap")
+		}
+		Execute(bootstrapEnv)
+	}
+	/*
+		bootstrap = true
+		gitToken = "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"
+		gitRepo = "github.com/SindreBrurberg/nerthus-test-config"
+	*/
 	portString := os.Getenv("webserver.port")
 	port, err := strconv.Atoi(portString)
 	if err != nil {
@@ -85,6 +94,12 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
+	dir := "exoreaction" //"tmp-test-dir"
+	Execute(dir)
+
+	serv.API.PUT("/environment/:env", func(c *gin.Context) {
+
+	})
 	serv.API.PUT("/provision/:artifactId", func(c *gin.Context) {
 		artifactId := c.Param("artifactId")
 		auth := webserver.GetAuthHeader(c)
@@ -167,25 +182,27 @@ func main() {
 	serv.API.PUT("/deploy/:artifactId", func(c *gin.Context) {
 	})
 
-	hc := make(chan message.Action, 10)
-	hostActions.Set("testHost", hc)
-	hc <- message.Action{
-		Action: message.Playbook,
-		AnsiblePlaybook: `---
-- name: Test playbook
-  hosts: localhost
-  connection: local
-  tasks:
-    - name: Ansible | Print test
-      debug:
-        msg: "test print"
-    - name: Ansible | Skipp me
-      debug:
-        msg: "test print"
-      when: false
-`,
-		ExtraVars: nil,
-	}
+	/*
+			hc := make(chan message.Action, 10)
+			hostActions.Set("testHost", hc)
+			hc <- message.Action{
+				Action: message.Playbook,
+				AnsiblePlaybook: `---
+		- name: Test playbook
+		  hosts: localhost
+		  connection: local
+		  tasks:
+		    - name: Ansible | Print test
+		      debug:
+		        msg: "test print"
+		    - name: Ansible | Skipp me
+		      debug:
+		        msg: "test print"
+		      when: false
+		`,
+				ExtraVars: nil,
+			}
+	*/
 
 	websocket.Serve[message.Action](serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
 		host := p.ByName("host")
@@ -308,4 +325,92 @@ func ReadRoleDir(dir fs.FS, path string, roles map[string]ansible.Role) error {
 		roles[name] = role
 		return nil
 	})
+}
+
+// dir, err := os.MkdirTemp(".", "config-repo")
+//
+//	if err != nil {
+//		log.WithError(err).Fatal("while creating tmpdir for git clone")
+//	}
+//
+// defer os.RemoveAll(dir)
+
+func GitAuth() *gitHttp.BasicAuth {
+	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
+		Username: "nerthus",
+		Password: gitToken,
+	}
+}
+
+func GitCloneEnvironment(env string) (r *git.Repository, err error) {
+	// Clones the repository into the given dir, just as a normal git clone does
+	r, err = git.PlainClone(env, false, &git.CloneOptions{
+		Auth: GitAuth(),
+		URL:  fmt.Sprintf("https://%s.git", gitRepo),
+	})
+	if err != nil {
+		return
+	}
+	return
+}
+
+func GitBootstrap(r *git.Repository, env string) {
+	w, err := r.Worktree()
+	if err != nil {
+		log.WithError(err).Fatal("while getting git work tree")
+	}
+	err = fs.WalkDir(EFS, "bootstrap", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "bootstrap" {
+			return nil
+		}
+
+		filename := strings.TrimPrefix(path, "bootstrap/")
+		fullFilename := filepath.Join(env, filename)
+		log.Info("processing file from EFS", "filename", filename)
+
+		if d.IsDir() {
+			err = os.Mkdir(fullFilename, 0750)
+			if errors.Is(err, os.ErrExist) {
+				return nil
+			}
+			return err
+		}
+
+		data, err := EFS.ReadFile(path)
+		if err != nil {
+			log.WithError(err).Fatal("while reading file from EFS")
+		}
+		err = os.WriteFile(fullFilename, data, 0640)
+		if err != nil {
+			log.WithError(err).Fatal("while writing file from EFS to gitrepo")
+		}
+		_, err = w.Add(filename)
+		if err != nil {
+			log.WithError(err).Fatal("while adding file to commit")
+		}
+		return nil
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while walking bootstrap dir")
+	}
+
+	_, err = w.Commit("committing bootstrap", &git.CommitOptions{
+		Author: &object.Signature{
+			Name: "Nerthus",
+			When: time.Now(),
+		},
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while committing bootstrap")
+	}
+
+	err = r.Push(&git.PushOptions{
+		Auth: GitAuth(),
+	})
+	if err != nil {
+		log.WithError(err).Fatal("while pushing")
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/message"
 	"github.com/cantara/nerthus2/system"
 	"github.com/cantara/nerthus2/system/service"
 	"gopkg.in/yaml.v3"
@@ -192,7 +193,17 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 			}
 			AddTask(dep, sys.Services[i].Node, &done, systemRoles)
 		}
-
+		done = []string{}
+		sys.Services[i].Prov = &ansible.Playbook{
+			Name:       serviceInfo.Name,
+			Hosts:      "localhost",
+			Connection: "local",
+			Vars: map[string]any{
+				"env":     env.Name,
+				"service": "ec2-user",
+			},
+		}
+		AddTask("cron", sys.Services[i].Prov, &done, systemRoles)
 	}
 	nerthusVars := map[string]string{
 		"region": os.Getenv("aws.region"), //"eu-central-1", //"ap-northeast-1",
@@ -346,81 +357,62 @@ func BuildLoadbalancerSetup(sys system.System) (rules []Rule, defaultAction []Ac
 }
 
 func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
+	if bootstrap && serv.ServiceInfo.Name != "Nerthus" {
+		return
+	}
 	buff := bufPool.Get().(*bytes.Buffer)
 	defer bufPool.Put(buff)
-	os.Mkdir(dir+"nodes", 0750)
-
-	if serv.Node != nil {
-		for i, name := range serv.Vars["node_names"].([]string) {
-			serv.Node.Vars["hostname"] = name
-			serv.Node.Vars["server_number"] = strconv.Itoa(i)
-
-			if serv.Properties != nil {
-				properties := ""
-				if serv.Properties != nil {
-					properties = *serv.Properties
-				}
-				if serv.WebserverPort != nil {
-					serv.Node.Vars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
-					if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
-						log.Fatal("Webserver port and properties file provided without providing webserver_port_key")
-					}
-					lines := strings.Split(properties, "\n")
-					found := false
-					for l, line := range lines {
-						if !strings.HasPrefix(line, serv.ServiceInfo.Requirements.WebserverPortKey) {
-							continue
-						}
-						lines[l] = fmt.Sprintf("%s=%d", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort)
-						found = true
-						break
-					}
-					if found {
-						properties = strings.Join(lines, "\n")
-					} else {
-						properties = fmt.Sprintf("%s=%d\n%s", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort, properties)
-					}
-				}
-				serv.Node.Vars["properties_name"] = serv.ServiceInfo.Requirements.PropertiesName
-				serv.Node.Vars["local_override_content"] = properties
-			}
-			if serv.Files != nil {
-				files := make([]File, len(*serv.Files))
-				fileNum := 0
-				for name, content := range *serv.Files {
-					files[fileNum] = File{
-						Name:    name,
-						Content: content,
-					}
-					fileNum++
-				}
-				serv.Node.Vars["files"] = files
-			}
-			serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
-			out, err := yaml.Marshal([]ansible.Playbook{
-				*serv.Node,
-			})
-			if err != nil {
-				log.WithError(err).Fatal("unable to marshall json for node playbook", "node", serv.Node)
-			}
-			fn := fmt.Sprintf("%snodes/%s.yml", dir, serv.Node.Vars["hostname"])
-			os.Remove(fn)
-			os.WriteFile(fn, out, 0644)
-		}
-	}
 
 	exec := execute.NewDefaultExecute(
 		execute.WithWrite(io.Writer(buff)),
 	)
 
-	ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
-		ExtraVars: serv.Vars,
-	}
 	play := "provision.yml"
 	if serv.Playbook != "" {
 		play = fmt.Sprintf("%s/%s", serv.Playbook, play)
 	}
-	play = "bootstrap-provision.yml"
+	for i, name := range serv.NodeNames {
+		os.Mkdir(dir+"nodes", 0750)
+		out, err := GenerateNodeProvisionPlay(serv, name, i)
+		if err != nil {
+			log.WithError(err).Fatal("while generating node play")
+		}
+		fn := fmt.Sprintf("%snodes/%s.yml", dir, name)
+		os.Remove(fn)
+		os.WriteFile(fn, out, 0644)
+		log.Warning(fn)
+		if bootstrap && serv.ServiceInfo.Name == "Nerthus" {
+			out, err = GenerateNodePlay(serv, name, i)
+			if err != nil {
+				log.WithError(err).Fatal("while generating node play")
+			}
+			serv.Vars["bootstrap"] = `cat <<'EOF' > bootstrap.yml
+{{ lookup('file', 'nodes/` + name + `_bootstrap.yml') }}
+EOF
+su -c "ansible-playbook bootstrap.yml" ec2-user`
+			fn = fmt.Sprintf("%snodes/%s_bootstrap.yml", dir, name)
+			os.Remove(fn)
+			os.WriteFile(fn, out, 0644)
+		} else {
+			out, err = GenerateNodePlay(serv, name, i)
+			if err != nil {
+				log.WithError(err).Fatal("while generating node play")
+			}
+			ha, ok := hostActions.Get(name)
+			if !ok {
+				ha = make(chan message.Action, 10)
+				hostActions.Set(name, ha)
+			}
+			ha <- message.Action{
+				Action:          message.Playbook,
+				AnsiblePlaybook: out,
+			}
+		}
+	}
+
+	ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
+		ExtraVars: serv.Vars,
+	}
 	pb := &playbook.AnsiblePlaybookCmd{
 		Playbooks:      []string{dir + play},
 		Exec:           exec,
@@ -550,4 +542,72 @@ func AddTask(role string, pb *ansible.Playbook, done *[]string, roles map[string
 	*/
 	pb.Tasks = append(pb.Tasks, r.Tasks...)
 	*done = append(*done, r.Id)
+}
+
+func GenerateNodePlay(serv system.Service, name string, i int) (out []byte, err error) {
+	serv.Node.Vars["hostname"] = name
+	serv.Node.Vars["server_number"] = strconv.Itoa(i)
+
+	if serv.Properties != nil { // THIS IS STUPID
+		properties := ""
+		if serv.Properties != nil {
+			properties = *serv.Properties
+		}
+		if serv.WebserverPort != nil {
+			serv.Node.Vars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
+			if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
+				log.Fatal("Webserver port and properties file provided without providing webserver_port_key")
+			}
+			lines := strings.Split(properties, "\n")
+			found := false
+			for l, line := range lines {
+				if !strings.HasPrefix(line, serv.ServiceInfo.Requirements.WebserverPortKey) {
+					continue
+				}
+				lines[l] = fmt.Sprintf("%s=%d", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort)
+				found = true
+				break
+			}
+			if found {
+				properties = strings.Join(lines, "\n")
+			} else {
+				properties = fmt.Sprintf("%s=%d\n%s", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort, properties)
+			}
+		}
+		serv.Node.Vars["properties_name"] = serv.ServiceInfo.Requirements.PropertiesName
+		serv.Node.Vars["local_override_content"] = properties
+	}
+	if serv.Files != nil {
+		files := make([]File, len(*serv.Files))
+		fileNum := 0
+		for name, content := range *serv.Files {
+			files[fileNum] = File{
+				Name:    name,
+				Content: content,
+			}
+			fileNum++
+		}
+		serv.Node.Vars["files"] = files
+	}
+	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
+	out, err = yaml.Marshal([]ansible.Playbook{
+		*serv.Node,
+	})
+	if err != nil {
+		log.WithError(err).Fatal("unable to marshall yaml for node playbook", "node", serv.Node)
+	}
+	return
+}
+
+func GenerateNodeProvisionPlay(serv system.Service, name string, i int) (out []byte, err error) {
+	serv.Prov.Vars["hostname"] = name
+	serv.Prov.Vars["server_number"] = strconv.Itoa(i)
+
+	out, err = yaml.Marshal([]ansible.Playbook{
+		*serv.Prov,
+	})
+	if err != nil {
+		log.WithError(err).Fatal("unable to marshall yaml for node playbook", "node", serv.Prov)
+	}
+	return
 }

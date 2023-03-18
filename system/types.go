@@ -43,5 +43,6 @@ type Service struct {
 	Properties    *string            `yaml:"properties,omitempty"`
 	Files         *map[string]string `yaml:"files,omitempty"`
 	Node          *ansible.Playbook  `yaml:",omitempty"`
+	Prov          *ansible.Playbook  `yaml:",omitempty"`
 	ServiceInfo   *service.Service   `yaml:",omitempty"`
 }

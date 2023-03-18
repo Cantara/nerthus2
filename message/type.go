@@ -2,7 +2,7 @@ package message
 
 type Action struct {
 	Action          string            `json:"action"`
-	AnsiblePlaybook string            `json:"ansible_playbook"`
+	AnsiblePlaybook []byte            `json:"ansible_playbook"`
 	ExtraVars       map[string]string `json:"extra_vars"`
 	Response        *Response         `json:"response,omitempty"`
 }

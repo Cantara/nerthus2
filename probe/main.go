@@ -47,7 +47,7 @@ type AnsibleTaskStatus struct {
 }
 
 type AnsibleAction struct {
-	Playbook  string                   `json:"playbook"`
+	Playbook  []byte                   `json:"playbook"`
 	ExtraVars map[string]string        `json:"extra_vars"`
 	Results   chan<- AnsibleTaskStatus `json:"results"`
 }
@@ -61,7 +61,7 @@ func AnsibleExecutor(action AnsibleAction) {
 		log.WithError(err).Fatal("unable to create tmp file for playbook")
 	}
 	defer os.Remove(f.Name())
-	_, err = f.WriteString(action.Playbook)
+	_, err = f.Write(action.Playbook)
 	if err != nil {
 		log.WithError(err).Fatal("unable to write tmp playbook")
 	}
@@ -138,7 +138,7 @@ func ActionHandler(action message.Action) (resp message.Response) {
 }
 
 func NerthusConnector(ctx context.Context) {
-	u, err := url.Parse("ws://" + os.Getenv("nerthus.url") + "/probe/testHost")
+	u, err := url.Parse("ws://" + os.Getenv("nerthus.url") + "/probe/" + os.Getenv("nerthus.url"))
 	if err != nil {
 		log.WithError(err).Fatal("while parsing url to nerthus", "url", os.Getenv("nerthus.url"))
 	}
