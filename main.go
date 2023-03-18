@@ -79,6 +79,7 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
 		Execute(bootstrapEnv)
+		return
 	}
 	/*
 		bootstrap = true
@@ -94,12 +95,10 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
-	dir := "exoreaction" //"tmp-test-dir"
-	Execute(dir)
 
 	serv.API.PUT("/environment/:env", func(c *gin.Context) {
-
 	})
+
 	serv.API.PUT("/provision/:artifactId", func(c *gin.Context) {
 		artifactId := c.Param("artifactId")
 		auth := webserver.GetAuthHeader(c)
