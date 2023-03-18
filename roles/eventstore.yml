@@ -1,14 +1,21 @@
 name: Setup EventStore
 dependencies:
   - role: docker
+  - role: service
 vars:
   service:
   zone:
   tag: ":latest"
+  service_in_docker: true
+  webserver_port: 2113
 tasks:
   - set_fact:
       tag: :22.10.1-alpha-arm64v8
     when: ansible_architecture == "aarch64"
+  - name: Find hostname
+    shell: |
+      hostname -I | cut -f1 -d' '
+    register: ip_adder
   - name: Create a eventstore container
     community.docker.docker_container:
       name: eventstore
@@ -25,8 +32,8 @@ tasks:
       env:
         EVENTSTORE_INSECURE: "true"
         EVENTSTORE_EXT_IP: "0.0.0.0"
-        EVENTSTORE_EXT_HOST_ADVERTISE_AS: "$(hostname -I | cut -f1 -d' ')"
+        EVENTSTORE_EXT_HOST_ADVERTISE_AS: "{{ ip_adder.stdout }}"
         EVENTSTORE_INT_IP: "0.0.0.0"
-        EVENTSTORE_INT_HOST_ADVERTISE_AS: "$(hostname -I | cut -f1 -d' ')"
+        EVENTSTORE_INT_HOST_ADVERTISE_AS: "{{ ip_adder.stdout }}"
         EVENTSTORE_CLUSTER_SIZE: "3"
         EVENTSTORE_CLUSTER_DNS: "{{ service }}.{{ zone }}"

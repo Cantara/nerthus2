@@ -1,10 +1,13 @@
 name: Setup OpenSearch
 dependencies:
   - role: docker
+  - role: service
 vars:
   service:
   zone:
   tag: ":latest"
+  service_in_docker: true
+  webserver_port: 9200
 tasks:
   - name: Create a OpenSearch container
     community.docker.docker_container:

@@ -4,7 +4,7 @@ dependencies:
   - role: buri
 vars:
   service:
-  artifact_group:
+  artifact_group: #Could use this instead of service_in_docker to decide if you should downloade service or not.
   webserver_port:
   env:
   visuale_host:
@@ -23,7 +23,7 @@ tasks:
           MAILTO=""
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
-          */6 * * * * ./buri -t {{ health_type }} -a {{ service }} -g {{ artifact_group }} -r > /dev/null
+          {{ '*/6 * * * * ./buri -t '+ health_type +' -a '+ service +' -g '+ artifact_group +' -r > /dev/null' if service_in_docker is not defined else '' }}
           */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}/health" -a "{{ service }}" -t "{{ health_type }}" > /dev/null &
         dest: "/home/{{ service }}/CRON"
         mode: '0640'
