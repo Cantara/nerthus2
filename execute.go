@@ -24,6 +24,7 @@ import (
 )
 
 func Execute(dir string) {
+	dir = "systems/" + dir
 	var finishedWG sync.WaitGroup
 	defer finishedWG.Wait()
 	roles := make(map[string]ansible.Role)
@@ -390,6 +391,9 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 {{ lookup('file', 'nodes/` + name + `_bootstrap.yml') }}
 EOF
 su -c "ansible-playbook bootstrap.yml" ec2-user`
+			serv.Vars["git_token"] = gitToken
+			serv.Vars["git_repo"] = gitRepo
+			serv.Vars["env"] = bootstrapEnv
 			fn = fmt.Sprintf("%snodes/%s_bootstrap.yml", dir, name)
 			os.Remove(fn)
 			os.WriteFile(fn, out, 0644)

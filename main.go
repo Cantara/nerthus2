@@ -81,6 +81,23 @@ func main() {
 		Execute(bootstrapEnv)
 		return
 	}
+	if gitToken == "" {
+		gitToken = os.Getenv("git.token")
+		gitRepo = os.Getenv("git.repo")
+		bootstrapEnv = os.Getenv("env")
+	}
+	_, err := os.ReadDir("systems/" + bootstrapEnv)
+	if err != nil {
+		err = os.MkdirAll("systems", 0750)
+		if err != nil {
+			log.WithError(err).Fatal("while creating systems dir on first boot")
+		}
+		_, err = GitCloneEnvironment(bootstrapEnv)
+		if err != nil {
+			log.WithError(err).Fatal("while cloning git repo for bootstrapped environment")
+		}
+		Execute(bootstrapEnv)
+	}
 	/*
 		bootstrap = true
 		gitToken = "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"
@@ -343,7 +360,7 @@ func GitAuth() *gitHttp.BasicAuth {
 
 func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 	// Clones the repository into the given dir, just as a normal git clone does
-	r, err = git.PlainClone(env, false, &git.CloneOptions{
+	r, err = git.PlainClone("systems/"+env, false, &git.CloneOptions{
 		Auth: GitAuth(),
 		URL:  fmt.Sprintf("https://%s.git", gitRepo),
 	})
