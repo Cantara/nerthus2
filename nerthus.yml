@@ -6,6 +6,7 @@ artifact_group: no/cantara/gotools
 dependencies:
   - service
   - aws
+  - local_override
 requirements:
   ram: 1GB
   disk: 5GB

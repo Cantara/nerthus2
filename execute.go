@@ -222,6 +222,11 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 		if systemName != serv.Name {
 			extra = fmt.Sprintf("-%s", serv.Name)
 		}
+		if serv.ServiceInfo.ArtifactId != "" {
+			extraVars["artifact_id"] = serv.ServiceInfo.ArtifactId
+		} else {
+			extraVars["artifact_id"] = serv.Name
+		}
 
 		extraVars["system"] = systemName
 		extraVars["service"] = serv.Name
