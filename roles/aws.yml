@@ -1,6 +1,8 @@
 name: Install aws collections for ansible
+dependencies:
+  - role: user
 vars:
-  username: ec2-user
+  service:
 tasks:
   - block:
     - name: Installing aws collections for ansible
@@ -8,4 +10,4 @@ tasks:
         ansible-galaxy collection install community.aws
         ansible-galaxy collection install amazon.aws
     become: yes
-    become_user: ec2-user
+    become_user: "{{ service }}"
