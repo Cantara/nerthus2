@@ -1,0 +1,11 @@
+name: Install aws collections for ansible
+vars:
+  username: ec2-user
+tasks:
+  - block:
+    - name: Installing aws collections for ansible
+      ansible.builtin.shell: |
+        ansible-galaxy collection install community.aws
+        ansible-galaxy collection install amazon.aws
+    become: yes
+    become_user: ec2-user

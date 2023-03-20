@@ -1,9 +1,11 @@
 name: Nerthus
 service_type: H2A
 health_type: go
+artifact_id: nerthus2
 artifact_group: no/cantara/gotools
 dependencies:
   - service
+  - aws
 requirements:
   ram: 1GB
   disk: 5GB

@@ -365,6 +365,19 @@ func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 		URL:  fmt.Sprintf("https://%s.git", gitRepo),
 	})
 	if err != nil {
+		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
+			r, err = git.PlainOpen("systems/" + env)
+			if err != nil {
+				return
+			}
+			err = r.Fetch(&git.FetchOptions{
+				Auth: GitAuth(),
+			})
+			if errors.Is(err, git.NoErrAlreadyUpToDate) {
+				err = nil
+			}
+			return
+		}
 		return
 	}
 	return

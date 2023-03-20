@@ -383,6 +383,9 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 		os.WriteFile(fn, out, 0644)
 		log.Warning(fn)
 		if bootstrap && serv.ServiceInfo.Name == "Nerthus" {
+			serv.Node.Vars["git_token"] = gitToken
+			serv.Node.Vars["git_repo"] = gitRepo
+			serv.Node.Vars["environment"] = bootstrapEnv
 			out, err = GenerateNodePlay(serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")
@@ -391,9 +394,6 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 {{ lookup('file', 'nodes/` + name + `_bootstrap.yml') }}
 EOF
 su -c "ansible-playbook bootstrap.yml" ec2-user`
-			serv.Vars["git_token"] = gitToken
-			serv.Vars["git_repo"] = gitRepo
-			serv.Vars["env"] = bootstrapEnv
 			fn = fmt.Sprintf("%snodes/%s_bootstrap.yml", dir, name)
 			os.Remove(fn)
 			os.WriteFile(fn, out, 0644)
