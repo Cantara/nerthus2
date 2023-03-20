@@ -11,6 +11,6 @@ requirements:
   ram: 1GB
   disk: 5GB
   cpu: 1
-  properties: .env
+  properties_name: .env
   webserver_port_key: webserver.port
   not_cluster_able: true
