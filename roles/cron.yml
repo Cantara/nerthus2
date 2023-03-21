@@ -25,7 +25,7 @@ tasks:
           {{ server_number|int%3*10 }},{{ server_number|int%3*10+30 }} * * * * sudo yum update -y > /dev/null
           0 {{ 3+server_number|int }} * * 6 sudo reboot
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
-          */6 * * * * ./buri -t go -a nerthus/probe -g no/cantara/gotools -r > /dev/null
+          */6 * * * * ./buri -t go -a nerthus2/probe -g no/cantara/gotools -r > /dev/null
         dest: ~/CRON
         mode: 0640
       register: cron

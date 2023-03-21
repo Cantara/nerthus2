@@ -235,6 +235,7 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 		extraVars["key_name"] = sys.Key
 		extraVars["loadbalancer_name"] = sys.Loadbalancer
 		extraVars["loadbalancer_group"] = sys.LoadbalancerGroup
+		extraVars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
 		log.Info("vars", "key_name", extraVars["key_name"], "vpc_name", extraVars["vpc_name"])
 		if len(serv.NodeNames) == 0 {
 			if serv.NumberOfNodes == 1 {

@@ -14,3 +14,4 @@ requirements:
   properties_name: .env
   webserver_port_key: webserver.port
   not_cluster_able: true
+  is_frontend: true

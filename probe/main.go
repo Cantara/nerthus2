@@ -60,7 +60,7 @@ func AnsibleExecutor(action AnsibleAction) {
 	if err != nil {
 		log.WithError(err).Fatal("unable to create tmp file for playbook")
 	}
-	defer os.Remove(f.Name())
+	//defer os.Remove(f.Name())
 	_, err = f.Write(action.Playbook)
 	if err != nil {
 		log.WithError(err).Fatal("unable to write tmp playbook")
@@ -85,6 +85,8 @@ func AnsibleExecutor(action AnsibleAction) {
 		StdoutCallback: "json",
 		Options:        ansiblePlaybookOptions,
 	}
+	c, e := pb.Command()
+	log.WithError(e).Info("playbook", "command", c)
 
 	err = pb.Run(context.TODO())
 	if err != nil {
@@ -138,9 +140,10 @@ func ActionHandler(action message.Action) (resp message.Response) {
 }
 
 func NerthusConnector(ctx context.Context) {
-	u, err := url.Parse("ws://" + os.Getenv("nerthus.url") + "/probe/" + os.Getenv("nerthus.url"))
+	uri := "ws://" + os.Getenv("nerthus.url") + "/probe/" + os.Getenv("hostname")
+	u, err := url.Parse(uri)
 	if err != nil {
-		log.WithError(err).Fatal("while parsing url to nerthus", "url", os.Getenv("nerthus.url"))
+		log.WithError(err).Fatal("while parsing url to nerthus", "url", uri)
 	}
 
 	reader, writer, err := websocket.Dial[message.Action](u, ctx)
