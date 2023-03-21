@@ -167,7 +167,7 @@ func NerthusConnector(ctx context.Context) {
 			if err != nil {
 				log.WithError(err).Error("unable to write response to nerthus", "response", resp, "action", action,
 					"url", u.String(), "response_type", reflect.TypeOf(resp), "action_type", reflect.TypeOf(action))
-				continue
+				return //TODO: continue
 			}
 		}
 	}
