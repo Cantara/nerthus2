@@ -25,8 +25,8 @@ tasks:
           PATH=/bin:/usr/bin:/usr/local/bin
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
-          {{ '*/6 * * * * ./buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group +' -r > /dev/null' if service_in_docker is not defined else '' }}
-          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}/health" -a "{{ service }}" -t "{{ health_type }}" {{ '-u '+artifact_release if artifact_release is defined else '' }} > /dev/null &
+          {{ '*/6 * * * * ./buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + '{{ \'-u \'+artifact_release if artifact_release is defined else \'\' }}' +' -r > /dev/null' if service_in_docker is not defined else '' }}
+          */5 * * * * ./nerthus2-probe-health -d 5m -r "{{ visuale }}" -h "http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}/health" -a "{{ service }}" -t "{{ health_type }}" > /dev/null &
         dest: "/home/{{ service }}/CRON"
         mode: '0640'
       register: service_cron
