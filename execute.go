@@ -637,6 +637,9 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 		}()
 	}
 	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
+	if serv.ServiceInfo.ArtifactRelease != "" {
+		serv.Node.Vars["artifact_release"] = serv.ServiceInfo.ArtifactRelease
+	}
 	out, err = yaml.Marshal([]ansible.Playbook{
 		*serv.Node,
 	})

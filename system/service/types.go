@@ -1,13 +1,14 @@
 package service
 
 type Service struct {
-	Name          string       `yaml:"name"`
-	ServiceType   string       `yaml:"service_type"`
-	HealthType    string       `yaml:"health_type"`
-	ArtifactId    string       `yaml:"artifact_id"`
-	ArtifactGroup string       `yaml:"artifact_group"`
-	Dependencies  []string     `yaml:"dependencies"`
-	Requirements  Requirements `yaml:"requirements"`
+	Name            string       `yaml:"name"`
+	ServiceType     string       `yaml:"service_type"`
+	HealthType      string       `yaml:"health_type"`
+	ArtifactId      string       `yaml:"artifact_id"`
+	ArtifactGroup   string       `yaml:"artifact_group"`
+	ArtifactRelease string       `yaml:"artifact_release"`
+	Dependencies    []string     `yaml:"dependencies"`
+	Requirements    Requirements `yaml:"requirements"`
 }
 type Requirements struct {
 	RAM              string `yaml:"ram"`
