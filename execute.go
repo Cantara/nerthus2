@@ -57,12 +57,12 @@ func Execute(dir string) {
 			for _, serv := range sys.Services {
 				if serv.Playbook != "" {
 					wg.Wait()
-					ExecutePrivisioning(fmt.Sprintf("%s/%s/", dir, serv.Playbook), serv, &bufPool)
+					ExecutePrivisioning(envFS, fmt.Sprintf("%s/%s/", dir, serv.Playbook), serv, &bufPool)
 					continue
 				}
 				wg.Add(1)
 				go func(serv system.Service) {
-					ExecutePrivisioning(dir+"/ansible/", serv, &bufPool)
+					ExecutePrivisioning(envFS, dir+"/ansible/", serv, &bufPool)
 					wg.Done()
 				}(serv)
 				time.Sleep(5 * time.Second)
@@ -363,7 +363,7 @@ func BuildLoadbalancerSetup(sys system.System) (rules []Rule, defaultAction []Ac
 	return
 }
 
-func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
+func ExecutePrivisioning(envFS fs.FS, dir string, serv system.Service, bufPool *sync.Pool) {
 	if bootstrap && serv.ServiceInfo.Name != "Nerthus" {
 		return
 	}
@@ -394,7 +394,7 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 			serv.Node.Vars["git_token"] = gitToken
 			serv.Node.Vars["git_repo"] = gitRepo
 			serv.Node.Vars["boot_env"] = bootstrapEnv
-			out, err = GenerateNodePlay(serv, name, i)
+			out, err = GenerateNodePlay(envFS, dir, serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")
 			}
@@ -406,7 +406,7 @@ su -c "ansible-playbook bootstrap.yml" ec2-user`
 			os.Remove(fn)
 			os.WriteFile(fn, out, 0644)
 		} else {
-			out, err = GenerateNodePlay(serv, name, i)
+			out, err = GenerateNodePlay(envFS, dir, serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")
 			}
@@ -556,7 +556,7 @@ func AddTask(role string, pb *ansible.Playbook, done *[]string, roles map[string
 	*done = append(*done, r.Id)
 }
 
-func GenerateNodePlay(serv system.Service, name string, i int) (out []byte, err error) {
+func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name string, i int) (out []byte, err error) {
 	serv.Node.Vars["hostname"] = name
 	serv.Node.Vars["server_number"] = strconv.Itoa(i)
 
@@ -590,16 +590,51 @@ func GenerateNodePlay(serv system.Service, name string, i int) (out []byte, err 
 		serv.Node.Vars["local_override_content"] = properties
 	}
 	if serv.Files != nil {
-		files := make([]File, len(*serv.Files))
-		fileNum := 0
-		for name, content := range *serv.Files {
-			files[fileNum] = File{
-				Name:    name,
-				Content: content,
+		func() {
+			filesFromDir := false
+			func() {
+				if len(*serv.Files) != 1 {
+					return
+				}
+				dir, ok := (*serv.Files)["dir"]
+				if !ok {
+					return
+				}
+				var files []File
+				err = fs.WalkDir(envFS, configDir+"files/"+dir, func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						return nil
+					}
+					b, err := fs.ReadFile(envFS, configDir+"files/"+dir+"/"+path)
+					if err != nil {
+						return err
+					}
+					files = append(files, File{
+						Name:    path,
+						Content: string(b),
+					})
+					return nil
+				})
+				serv.Node.Vars["files"] = files
+				filesFromDir = true
+			}()
+			if filesFromDir {
+				return
 			}
-			fileNum++
-		}
-		serv.Node.Vars["files"] = files
+			files := make([]File, len(*serv.Files))
+			fileNum := 0
+			for fn, content := range *serv.Files {
+				files[fileNum] = File{
+					Name:    fn,
+					Content: content,
+				}
+				fileNum++
+			}
+			serv.Node.Vars["files"] = files
+		}()
 	}
 	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
 	out, err = yaml.Marshal([]ansible.Playbook{
