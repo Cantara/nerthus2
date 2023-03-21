@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while getting webserver port")
 	}
-	serv, err := webserver.Init(uint16(port))
+	serv, err := webserver.Init(uint16(port), false)
 	if err != nil {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
