@@ -5,6 +5,12 @@ dependencies:
 vars:
   server_number:
 tasks:
+  - name: Install Cron
+    ansible.builtin.yum:
+      name: cronie
+      state: latest
+    become: yes
+    become_user: root
   - block:
     - name: Set service cron file
       copy:

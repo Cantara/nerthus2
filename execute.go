@@ -377,6 +377,8 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 	if serv.Playbook != "" {
 		play = fmt.Sprintf("%s/%s", serv.Playbook, play)
 	}
+	serv.Node.Vars["nerthus_host"] = serv.Vars["nerthus_host"]
+	serv.Prov.Vars["nerthus_host"] = serv.Vars["nerthus_host"]
 	for i, name := range serv.NodeNames {
 		os.Mkdir(dir+"nodes", 0750)
 		out, err := GenerateNodeProvisionPlay(serv, name, i)
@@ -390,7 +392,7 @@ func ExecutePrivisioning(dir string, serv system.Service, bufPool *sync.Pool) {
 		if bootstrap && serv.ServiceInfo.Name == "Nerthus" {
 			serv.Node.Vars["git_token"] = gitToken
 			serv.Node.Vars["git_repo"] = gitRepo
-			serv.Node.Vars["environment"] = bootstrapEnv
+			serv.Node.Vars["boot_env"] = bootstrapEnv
 			out, err = GenerateNodePlay(serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")

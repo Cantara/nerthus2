@@ -5,9 +5,18 @@ vars:
   service:
 tasks:
   - block:
+    - name: Installing ansible
+      ansible.builtin.shell: |
+        yes | pip3 install ansible --quiet --exists-action i
+    - name: Installing botocore
+      ansible.builtin.shell: |
+        yes | pip3 install botocore --quiet --exists-action i
+    - name: Installing boto3
+      ansible.builtin.shell: |
+        yes | pip3 install boto3 --quiet --exists-action i
     - name: Installing aws collections for ansible
       ansible.builtin.shell: |
-        ansible-galaxy collection install community.aws
         ansible-galaxy collection install amazon.aws
+      when: false
     become: yes
-    become_user: "{{ service }}"
+    become_user: "{{ service }}" #ansible-galaxy collection install community.aws
