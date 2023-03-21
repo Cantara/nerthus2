@@ -5,18 +5,9 @@
             "Sid": "VisualEditor0",
             "Effect": "Allow",
             "Action": [
-                "elasticloadbalancing:SetWebAcl",
-                "elasticloadbalancing:DescribeLoadBalancerAttributes",
-                "elasticloadbalancing:DescribeSSLPolicies",
-                "elasticloadbalancing:DescribeLoadBalancers",
-                "elasticloadbalancing:DescribeTargetGroupAttributes",
-                "elasticloadbalancing:DescribeListeners",
-                "elasticloadbalancing:DescribeAccountLimits",
-                "elasticloadbalancing:DescribeTargetHealth",
-                "elasticloadbalancing:DescribeTargetGroups",
                 "ec2:*",
-                "elasticloadbalancing:DescribeListenerCertificates",
-                "elasticloadbalancing:DescribeRules"
+                "route53:*",
+                "elasticloadbalancing:*"
             ],
             "Resource": "*"
         },
