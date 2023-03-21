@@ -244,7 +244,7 @@ func main() {
 					if err != nil {
 						log.WithError(err).Error("unable to write action to nerthus probe",
 							"action_type", reflect.TypeOf(action))
-						continue
+						return //TODO continue
 					}
 				}
 			}
