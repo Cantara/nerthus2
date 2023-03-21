@@ -5,10 +5,16 @@ dependencies:
 vars:
   server_number:
 tasks:
-  - name: Install Cron
-    ansible.builtin.yum:
-      name: cronie
-      state: latest
+  - block:
+    - name: Install Cron
+      ansible.builtin.yum:
+        name: cronie
+        state: latest
+    - name: Enable Cron
+      ansible.builtin.systemd:
+        name: crond
+        state: started
+        enabled: true
     become: yes
     become_user: root
   - block:
