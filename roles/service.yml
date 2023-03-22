@@ -5,3 +5,12 @@ dependencies:
   - role: buri
   - role: cron
   - role: service_cron
+vars:
+  service:
+  service_exec:
+tasks:
+  - name: Start service
+    shell: "{{ service_exec }}"
+    when: service_exec is defined
+    become: yes
+    become_user: "{{ service }}"
