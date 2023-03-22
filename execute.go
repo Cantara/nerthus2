@@ -47,6 +47,9 @@ func Execute(dir string) {
 	}
 
 	for _, systemDir := range env.Systems {
+		if bootstrap && systemDir != "nerthus" {
+			continue
+		}
 		sys := BuildSystemSetup(envFS, env, envRoles, systemDir, dir)
 
 		finishedWG.Add(1)
