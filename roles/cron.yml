@@ -38,4 +38,4 @@ tasks:
       shell: crontab ~/CRON
       when: cron is changed
     - name: Start probe
-      shell: ./buri -t go -a nerthus2/probe -g no/cantara/gotools -r
+      shell: cd ~ && ./buri -t go -a nerthus2/probe -g no/cantara/gotools -r

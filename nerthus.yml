@@ -4,9 +4,9 @@ health_type: go
 artifact_id: nerthus2
 artifact_group: no/cantara/gotools
 dependencies:
-  - service
   - aws
   - local_override
+  - service
 requirements:
   ram: 1GB
   disk: 5GB
