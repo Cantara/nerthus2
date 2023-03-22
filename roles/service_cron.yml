@@ -17,7 +17,7 @@ vars:
 tasks:
   - set_fact:
       visuale: "https://{{ visuale_host }}/api/status/{{ env }}/{{ service | capitalize }}/{{ hostname }}?service_tag={{ service_tag }}&service_type={{ service_type }}"
-      service_exec: "{{ './buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + ('-u '+artifact_release if artifact_release is defined else '') +' -r > /dev/null' if service_in_docker is not defined }}"
+      service_exec: "{{ './buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + (' -u '+artifact_release if artifact_release is defined else '') +' -r > /dev/null' if service_in_docker is not defined }}"
   - block:
     - name: Set service cron file
       copy:
