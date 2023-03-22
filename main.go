@@ -96,7 +96,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo for bootstrapped environment")
 		}
-		Execute(bootstrapEnv)
+		go Execute(bootstrapEnv)
 	}
 	/*
 		bootstrap = true
