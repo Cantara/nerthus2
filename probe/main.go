@@ -31,7 +31,11 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
-	NerthusConnector(context.Background())
+	go func() {
+		for {
+			NerthusConnector(context.Background())
+		}
+	}()
 	serv.Run()
 }
 
