@@ -41,6 +41,7 @@ type Service struct {
 	TargetGroup   string             `yaml:"target_group"`
 	WebserverPort *int               `yaml:"webserver_port,omitempty"`
 	Properties    *string            `yaml:"properties,omitempty"`
+	Dirs          *map[string]string `yaml:"dirs,omitempty"`
 	Files         *map[string]string `yaml:"files,omitempty"`
 	Node          *ansible.Playbook  `yaml:",omitempty"`
 	Prov          *ansible.Playbook  `yaml:",omitempty"`

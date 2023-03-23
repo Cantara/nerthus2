@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -530,6 +531,28 @@ func ExecuteLoadbalancer(dir string, rules []Rule, defaultAction []Action, sys s
 	}
 }
 
+func ReadFilesFromDir(envFS fs.FS, configDir, localDir, nodeDir string) (files []File, err error) {
+	filesDir := filepath.Clean(fmt.Sprintf("%s/files/%s", configDir, localDir))
+	err = fs.WalkDir(envFS, filesDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		b, err := fs.ReadFile(envFS, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, File{
+			Name:    nodeDir + strings.TrimPrefix(path, filesDir),
+			Content: string(b),
+		})
+		return nil
+	})
+	return
+}
+
 type File struct {
 	Name    string `yaml:"name"`
 	Content string `yaml:"content"`
@@ -592,41 +615,21 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 		serv.Node.Vars["properties_name"] = serv.ServiceInfo.Requirements.PropertiesName
 		serv.Node.Vars["local_override_content"] = properties
 	}
+	if serv.Dirs != nil {
+		for localDir, nodeDir := range *serv.Dirs {
+			files, err := ReadFilesFromDir(envFS, configDir, localDir, nodeDir)
+			if err != nil {
+				log.WithError(err).Error("while reading files from disk", "env", envFS, "config", configDir, "local", localDir, "node", nodeDir)
+			}
+			if serv.Node.Vars["files"] == nil {
+				serv.Node.Vars["files"] = files
+				continue
+			}
+			serv.Node.Vars["files"] = append(serv.Node.Vars["files"].([]File), files...)
+		}
+	}
 	if serv.Files != nil {
 		func() {
-			filesFromDir := false
-			func() {
-				if len(*serv.Files) != 1 {
-					return
-				}
-				dir, ok := (*serv.Files)["dir"]
-				if !ok {
-					return
-				}
-				var files []File
-				err = fs.WalkDir(envFS, configDir+"files/"+dir, func(path string, d fs.DirEntry, err error) error {
-					if err != nil {
-						return err
-					}
-					if d.IsDir() {
-						return nil
-					}
-					b, err := fs.ReadFile(envFS, configDir+"files/"+dir+"/"+path)
-					if err != nil {
-						return err
-					}
-					files = append(files, File{
-						Name:    path,
-						Content: string(b),
-					})
-					return nil
-				})
-				serv.Node.Vars["files"] = files
-				filesFromDir = true
-			}()
-			if filesFromDir {
-				return
-			}
 			files := make([]File, len(*serv.Files))
 			fileNum := 0
 			for fn, content := range *serv.Files {
@@ -636,7 +639,11 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 				}
 				fileNum++
 			}
-			serv.Node.Vars["files"] = files
+			if serv.Node.Vars["files"] == nil {
+				serv.Node.Vars["files"] = files
+				return
+			}
+			serv.Node.Vars["files"] = append(serv.Node.Vars["files"].([]File), files...)
 		}()
 	}
 	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
