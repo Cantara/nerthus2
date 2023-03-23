@@ -54,26 +54,26 @@ func Execute(dir string) {
 		sys := BuildSystemSetup(envFS, env, envRoles, systemDir, dir)
 
 		finishedWG.Add(1)
-		go func() {
+		go func(systemDir string) {
 			defer finishedWG.Done()
 			rules, defaultAction := BuildLoadbalancerSetup(sys)
 			var wg sync.WaitGroup
 			for _, serv := range sys.Services {
 				if serv.Playbook != "" {
 					wg.Wait()
-					ExecutePrivisioning(envFS, fmt.Sprintf("%s/%s/", dir, serv.Playbook), serv, &bufPool)
+					ExecutePrivisioning(envFS, fmt.Sprintf("%s/%s/", dir, serv.Playbook), serv, &bufPool, systemDir)
 					continue
 				}
 				wg.Add(1)
 				go func(serv system.Service) {
-					ExecutePrivisioning(envFS, dir+"/ansible/", serv, &bufPool)
+					ExecutePrivisioning(envFS, dir+"/ansible/", serv, &bufPool, systemDir)
 					wg.Done()
 				}(serv)
 				time.Sleep(5 * time.Second)
 			}
 			wg.Wait()
 			ExecuteLoadbalancer(dir, rules, defaultAction, sys, env)
-		}()
+		}(systemDir)
 	}
 }
 
@@ -367,7 +367,7 @@ func BuildLoadbalancerSetup(sys system.System) (rules []Rule, defaultAction []Ac
 	return
 }
 
-func ExecutePrivisioning(envFS fs.FS, dir string, serv system.Service, bufPool *sync.Pool) {
+func ExecutePrivisioning(envFS fs.FS, dir string, serv system.Service, bufPool *sync.Pool, configDir string) {
 	if bootstrap && serv.ServiceInfo.Name != "Nerthus" {
 		return
 	}
@@ -398,7 +398,7 @@ func ExecutePrivisioning(envFS fs.FS, dir string, serv system.Service, bufPool *
 			serv.Node.Vars["git_token"] = gitToken
 			serv.Node.Vars["git_repo"] = gitRepo
 			serv.Node.Vars["boot_env"] = bootstrapEnv
-			out, err = GenerateNodePlay(envFS, dir, serv, name, i)
+			out, err = GenerateNodePlay(envFS, configDir, serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")
 			}
@@ -410,7 +410,7 @@ su -c "ansible-playbook bootstrap.yml" ec2-user`
 			os.Remove(fn)
 			os.WriteFile(fn, out, 0644)
 		} else {
-			out, err = GenerateNodePlay(envFS, dir, serv, name, i)
+			out, err = GenerateNodePlay(envFS, configDir, serv, name, i)
 			if err != nil {
 				log.WithError(err).Fatal("while generating node play")
 			}
