@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.19
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.8
 	github.com/cantara/bragi v0.6.7
-	github.com/cantara/gober v0.14.3
+	github.com/cantara/gober v0.14.4
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/joho/godotenv v1.5.1
@@ -45,6 +45,9 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
+	github.com/gobwas/httphead v0.0.0-20180130184737-2c6c146eadee // indirect
+	github.com/gobwas/pool v0.2.0 // indirect
+	github.com/gobwas/ws v1.0.2 // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
