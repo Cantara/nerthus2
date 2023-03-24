@@ -144,7 +144,7 @@ func ActionHandler(action message.Action) (resp message.Response) {
 }
 
 func NerthusConnector(ctx context.Context) {
-	uri := "ws://" + os.Getenv("nerthus.url") + "/probe/" + os.Getenv("hostname")
+	uri := "wss://" + os.Getenv("nerthus.url") + "/probe/" + os.Getenv("hostname")
 	u, err := url.Parse(uri)
 	if err != nil {
 		log.WithError(err).Fatal("while parsing url to nerthus", "url", uri)
