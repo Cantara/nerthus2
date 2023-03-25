@@ -198,6 +198,9 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 			}
 			AddTask(dep, sys.Services[i].Node, &done, systemRoles)
 		}
+		if ArrayContains(done, "service") {
+			AddTask("exec_service", sys.Services[i].Node, &done, systemRoles)
+		}
 		done = []string{}
 		sys.Services[i].Prov = &ansible.Playbook{
 			Name:       serviceInfo.Name,
