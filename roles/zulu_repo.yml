@@ -1,8 +1,12 @@
 name: Install Zulu repo
 tasks:
-  - name: Install Zulu repo
-    ansible.builtin.yum:
-      name: https://cdn.azul.com/zulu/bin/zulu-repo-1.0.0-1.noarch.rpm
-      state: present
+  - block:
+      - rpm_key:
+          state: present
+          key: https://www.azul.com/wp-content/uploads/2021/05/0xB1998361219BD9C9.txt
+      - name: Install Zulu repo
+        ansible.builtin.yum:
+          name: https://cdn.azul.com/zulu/bin/zulu-repo-1.0.0-1.noarch.rpm
+          state: present
     become: yes
     become_user: root
