@@ -5,11 +5,20 @@ vars:
   service:
   files:
 tasks:
-  - name: "Set files"
-    copy:
-      content: "{{ item.content | string }}"
-      dest: "~/{{ item.name }}"
-      mode: '0640'
-    with_items: "{{ files }}"
+  - block:
+      - name: Change file ownership, group and permissions
+        ansible.builtin.file:
+          path: "~/{{ item.name }}"
+          owner: "{{ service }}"
+          group: "{{ service }}"
+          mode: '0640'
+          state: touch
+        with_items: "{{ files }}"
+      - name: "Set files"
+        copy:
+          content: "{{ item.content | string }}"
+          dest: "~/{{ item.name }}"
+          mode: '0640'
+        with_items: "{{ files }}"
     become: yes
     become_user: "{{ service }}"
