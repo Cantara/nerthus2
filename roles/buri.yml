@@ -3,7 +3,7 @@ dependencies:
   - role: user
 vars:
   service:
-  buri_base_version: 0.8.7
+  buri_base_version: 0.9.0
   os: linux
 tasks:
   - set_fact:
