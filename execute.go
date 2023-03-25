@@ -649,6 +649,20 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 			serv.Node.Vars["files"] = append(serv.Node.Vars["files"].([]File), files...)
 		}()
 	}
+	if serv.Node.Vars["files"] != nil {
+		var dirs []string
+		for _, file := range serv.Node.Vars["files"].([]File) {
+			dirParts := strings.Split(filepath.Dir(file.Name), "/")
+			for i := range dirParts {
+				curDur := strings.Join(dirParts[:i+1], "/")
+				if ArrayContains(dirs, curDur) {
+					continue
+				}
+				dirs = append(dirs, curDur)
+			}
+		}
+		serv.Node.Vars["dirs"] = dirs
+	}
 	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
 	if serv.ServiceInfo.ArtifactRelease != "" {
 		serv.Node.Vars["artifact_release"] = serv.ServiceInfo.ArtifactRelease
