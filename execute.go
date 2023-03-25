@@ -655,6 +655,9 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 			dirParts := strings.Split(filepath.Dir(file.Name), "/")
 			for i := range dirParts {
 				curDur := strings.Join(dirParts[:i+1], "/")
+				if curDur == "." {
+					continue
+				}
 				if ArrayContains(dirs, curDur) {
 					continue
 				}
