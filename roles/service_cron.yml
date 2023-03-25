@@ -36,8 +36,8 @@ tasks:
           */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
           {{ ('*/6 * * * * ' + service_exec) if service_exec is defined }}
-          {{ health_cron }}
-          {{ extra_service_cron }}
+          {{ health_cron if health_cron is defined }}
+          {{ extra_service_cron if extra_service_cron is defined }}
         dest: "/home/{{ service }}/CRON"
         mode: '0640'
       register: service_cron
