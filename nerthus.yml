@@ -3,6 +3,9 @@ service_type: H2A
 health_type: go
 artifact_id: nerthus2
 artifact_group: no/cantara/gotools
+artifact:
+  id: nerthus2
+  group: no/cantara/gotools
 dependencies:
   - aws
   - local_override
