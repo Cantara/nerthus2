@@ -1,12 +1,13 @@
 name: Set utf8
 vars:
   service:
-  env_content: |
+  global_env_content: |
+    LANG=C.UTF-8
     LC_ALL=C.UTF-8
 tasks:
   - name: Set environment file
     copy:
-      content: "{{ env_content }}"
+      content: "{{ global_env_content }}"
       dest: /etc/environment
     become: yes
     become_user: root
