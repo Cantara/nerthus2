@@ -1,12 +1,17 @@
 package properties
 
-/*
+import (
+	"fmt"
+	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/nerthus2/system"
+	"strings"
+)
+
 func Calculate(serv *system.Service) {
 	if serv.Properties == nil {
 		return
 	}
 	if serv.WebserverPort != nil {
-		serv.Node.Vars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
 		if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
 			log.Fatal("Webserver port and properties file provided without providing webserver_port_key")
 		}
@@ -27,4 +32,3 @@ func Calculate(serv *system.Service) {
 		}
 	}
 }
-*/
