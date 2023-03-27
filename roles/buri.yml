@@ -3,7 +3,7 @@ dependencies:
   - role: user
 vars:
   service:
-  buri_base_version: 0.9.2
+  buri_base_version: 0.9.5
   os: linux
 tasks:
   - set_fact:
@@ -33,6 +33,10 @@ tasks:
         src: "{{ buri_new.dest }}"
         dest: "/home/{{ service }}/buri"
         state: link
+    - name: Create scripts dir
+      file:
+        path: "/home/{{ service }}/scripts"
+        state: directory
     become: yes
     become_user: "{{ service }}"
     when: buri.stat.exists == false

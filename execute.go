@@ -1,29 +1,241 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"github.com/apenella/go-ansible/pkg/execute"
-	"github.com/apenella/go-ansible/pkg/playbook"
-	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
 	log "github.com/cantara/bragi/sbragi"
-	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/configManager/systems"
+	"github.com/cantara/nerthus2/executors"
 	"github.com/cantara/nerthus2/message"
 	"github.com/cantara/nerthus2/system"
-	"github.com/cantara/nerthus2/system/service"
-	"gopkg.in/yaml.v3"
-	"io"
-	"io/fs"
-	"net/url"
-	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"sync"
-	"time"
 )
 
+func ReadFullEnvConfig(env string) (envConf system.Environment, err error) {
+	builtinRoles, err := systems.BuiltinRoles(EFS)
+	if err != nil {
+		log.WithError(err).Fatal("while getting builtin roles")
+	}
+	envConf, err = systems.Environment(env, builtinRoles)
+	if err != nil {
+		log.WithError(err).Fatal("while getting environment config")
+	}
+	for _, systemName := range envConf.Systems {
+		systemConf, err := systems.System(envConf, systemName)
+		if err != nil {
+			log.WithError(err).Error("while getting system config")
+			continue
+		}
+		envConf.SystemConfigs[systemName] = systemConf
+		for _, service := range systemConf.Services {
+			err = systems.Service(systemConf, service)
+			if err != nil {
+				log.WithError(err).Error("while getting service config")
+				continue
+			}
+			if bootstrap && strings.ToLower(service.ServiceInfo.Name) != "nerthus" {
+				//log.Info("skipping service while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "service", service.Name)
+				continue
+			}
+			//log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
+
+		}
+	}
+	return
+}
+
+func ExecuteEnv(env string) {
+	envConf, err := ReadFullEnvConfig(env)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env config")
+	}
+	var bootstrapVars *executors.BootstrapVars
+	if bootstrap {
+		bootstrapVars = &executors.BootstrapVars{
+			GitToken: gitToken,
+			GitRepo:  gitRepo,
+			EnvName:  bootstrapEnv,
+		}
+	}
+	for _, system := range envConf.SystemConfigs {
+		if bootstrap && strings.ToLower(system.Name) != "nerthus" {
+			log.Info("skipping system while bootstrap nerthus", "env", envConf.Name, "system", system.Name)
+			continue
+		}
+		for _, service := range system.Services {
+			if bootstrap && strings.ToLower(service.ServiceInfo.Name) != "nerthus" {
+				log.Info("skipping service while bootstrap nerthus", "env", envConf.Name, "system", system.Name, "service", service.Name)
+				continue
+			}
+			log.Info("executing service", "env", envConf.Name, "system", system.Name, "service", service.Name, "overrides", service.Override)
+
+			serviceProvisioningVars := executors.ServiceProvisioningVars(envConf, system, *service, bootstrap)
+			for nodeNum, nodeName := range service.NodeNames {
+				nodeBootstrapVars := executors.NodeBootstrapVars(envConf, system, *service, nodeNum, serviceProvisioningVars, bootstrapVars)
+				nodeBootstrapPlayYaml, err := executors.PlayToYaml(executors.GenerateNodePlay(*service, nodeBootstrapVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+
+				if bootstrap {
+					err = executors.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeBootstrapPlayYaml, bootstrap)
+					if err != nil {
+						log.WithError(err).Error("while trying to write playbook yaml")
+						continue
+					}
+				} else {
+					ha, ok := hostActions.Get(nodeName)
+					if !ok {
+						ha = make(chan message.Action, 10)
+						hostActions.Set(nodeName, ha)
+					}
+					ha <- message.Action{
+						Action:          message.Playbook,
+						AnsiblePlaybook: nodeBootstrapPlayYaml,
+					}
+				}
+
+				nodeProvisioningVars := executors.NodeProvisioningVars(*service, nodeNum, serviceProvisioningVars)
+				serviceProvisioningPlayYaml, err := executors.PlayToYaml(executors.GenerateServiceProvisioningPlay(*service, nodeProvisioningVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+				err = executors.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, serviceProvisioningPlayYaml, false)
+				if err != nil {
+					log.WithError(err).Error("while trying to write playbook yaml")
+					continue
+				}
+			}
+
+			retChan := executors.ExecuteService(envConf.Dir, serviceProvisioningVars, context.Background())
+			for status := range retChan {
+				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			}
+		}
+
+		systemLoadbalancerVars := executors.SystemLoadbalancerVars(envConf, system)
+		retChan := executors.ExecuteLoadbalancer(envConf.Dir, systemLoadbalancerVars, context.Background())
+		for status := range retChan {
+			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+		}
+	}
+}
+
+func ExecuteSys(env, sys string) {
+	if bootstrap {
+		log.Fatal("can't bootstrap a single system", "env", env, "system", sys)
+		//Might want to allow this
+	}
+	envConf, err := ReadFullEnvConfig(env)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env config")
+	}
+	for _, system := range envConf.SystemConfigs {
+		if strings.ToLower(system.Name) != sys {
+			continue
+		}
+		for _, service := range system.Services {
+			log.Info("executing service", "env", envConf.Name, "system", system.Name, "service", service.Name, "overrides", service.Override)
+
+			serviceProvisioningVars := executors.ServiceProvisioningVars(envConf, system, *service, bootstrap)
+			for nodeNum, nodeName := range service.NodeNames {
+				nodeBootstrapVars := executors.NodeBootstrapVars(envConf, system, *service, nodeNum, serviceProvisioningVars, nil)
+				nodeBootstrapPlayYaml, err := executors.PlayToYaml(executors.GenerateNodePlay(*service, nodeBootstrapVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+
+				if bootstrap {
+					err = executors.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeBootstrapPlayYaml, bootstrap)
+					if err != nil {
+						log.WithError(err).Error("while trying to write playbook yaml")
+						continue
+					}
+				} else {
+					ha, ok := hostActions.Get(nodeName)
+					if !ok {
+						ha = make(chan message.Action, 10)
+						hostActions.Set(nodeName, ha)
+					}
+					ha <- message.Action{
+						Action:          message.Playbook,
+						AnsiblePlaybook: nodeBootstrapPlayYaml,
+					}
+				}
+
+				nodeProvisioningVars := executors.NodeProvisioningVars(*service, nodeNum, serviceProvisioningVars)
+				serviceProvisioningPlayYaml, err := executors.PlayToYaml(executors.GenerateServiceProvisioningPlay(*service, nodeProvisioningVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+				err = executors.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, serviceProvisioningPlayYaml, false)
+				if err != nil {
+					log.WithError(err).Error("while trying to write playbook yaml")
+					continue
+				}
+			}
+
+			retChan := executors.ExecuteService(envConf.Dir, serviceProvisioningVars, context.Background())
+			for status := range retChan {
+				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			}
+		}
+
+		systemLoadbalancerVars := executors.SystemLoadbalancerVars(envConf, system)
+		retChan := executors.ExecuteLoadbalancer(envConf.Dir, systemLoadbalancerVars, context.Background())
+		for status := range retChan {
+			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+		}
+	}
+}
+
+func ExecuteServ(env, sys, serv string) {
+	if bootstrap {
+		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "service", serv)
+		//Might want to allow this
+	}
+	envConf, err := ReadFullEnvConfig(env)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env config")
+	}
+	for _, system := range envConf.SystemConfigs {
+		if strings.ToLower(system.Name) != sys {
+			continue
+		}
+		for _, service := range system.Services {
+			if strings.ToLower(service.Name) != serv {
+				continue
+			}
+			log.Info("executing service", "env", envConf.Name, "system", system.Name, "service", service.Name, "overrides", service.Override)
+
+			serviceProvisioningVars := executors.ServiceProvisioningVars(envConf, system, *service, bootstrap)
+			for nodeNum, nodeName := range service.NodeNames {
+				nodeBootstrapVars := executors.NodeBootstrapVars(envConf, system, *service, nodeNum, serviceProvisioningVars, nil)
+				nodeBootstrapPlayYaml, err := executors.PlayToYaml(executors.GenerateNodePlay(*service, nodeBootstrapVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+
+				ha, ok := hostActions.Get(nodeName)
+				if !ok {
+					ha = make(chan message.Action, 10)
+					hostActions.Set(nodeName, ha)
+				}
+				ha <- message.Action{
+					Action:          message.Playbook,
+					AnsiblePlaybook: nodeBootstrapPlayYaml,
+				}
+			}
+		}
+	}
+}
+
+/*
 func Execute(dir string) {
 	dir = "systems/" + dir
 	var finishedWG sync.WaitGroup
@@ -197,9 +409,6 @@ func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansi
 				continue
 			}
 			AddTask(dep, sys.Services[i].Node, &done, systemRoles)
-		}
-		if ArrayContains(done, "service") {
-			AddTask("exec_service", sys.Services[i].Node, &done, systemRoles)
 		}
 		done = []string{}
 		sys.Services[i].Prov = &ansible.Playbook{
@@ -580,7 +789,7 @@ func AddTask(role string, pb *ansible.Playbook, done *[]string, roles map[string
 			}
 			pb.Vars[vn] = vv
 		}
-	*/
+*/ /*
 	pb.Tasks = append(pb.Tasks, r.Tasks...)
 	*done = append(*done, r.Id)
 }
@@ -649,23 +858,6 @@ func GenerateNodePlay(envFS fs.FS, configDir string, serv system.Service, name s
 			serv.Node.Vars["files"] = append(serv.Node.Vars["files"].([]File), files...)
 		}()
 	}
-	if serv.Node.Vars["files"] != nil {
-		var dirs []string
-		for _, file := range serv.Node.Vars["files"].([]File) {
-			dirParts := strings.Split(filepath.Dir(file.Name), "/")
-			for i := range dirParts {
-				curDur := strings.Join(dirParts[:i+1], "/")
-				if curDur == "." {
-					continue
-				}
-				if ArrayContains(dirs, curDur) {
-					continue
-				}
-				dirs = append(dirs, curDur)
-			}
-		}
-		serv.Node.Vars["dirs"] = dirs
-	}
 	serv.Node.Vars["artifact_group"] = serv.ServiceInfo.ArtifactGroup
 	if serv.ServiceInfo.ArtifactRelease != "" {
 		serv.Node.Vars["artifact_release"] = serv.ServiceInfo.ArtifactRelease
@@ -691,3 +883,4 @@ func GenerateNodeProvisionPlay(serv system.Service, name string, i int) (out []b
 	}
 	return
 }
+*/

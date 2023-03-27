@@ -22,10 +22,10 @@ tasks:
       - health_type is defined
       - webserver_port is defined
   - set_fact:
-      service_exec: "{{ './buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + (' -u '+artifact_release if artifact_release is defined else '') +' -r > /dev/null' }}"
+      service_exec: "{{ '~/buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + (' -u '+artifact_release if artifact_release is defined else '') +' -r > /dev/null' }}"
     when: service_in_docker is not defined
   - set_fact:
-      health_cron: "*/5 * * * * ./nerthus2-probe-health -d 5m -r '{{ visuale }}' -h 'http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}{{ '/'+extra_health_path if extra_health_path is defined else '' }}/health' -a '{{ artifact_id }}' -t '{{ health_type }}' > /dev/null &"
+      health_cron: "*/5 * * * * ~/nerthus2-probe-health -d 5m -r '{{ visuale }}' -h 'http://localhost:{{ webserver_port }}{{ '/'+service if not is_frontend else '' }}{{ '/'+extra_health_path if extra_health_path is defined else '' }}/health' -a '{{ artifact_id }}' -t '{{ health_type }}' > /dev/null &"
     when: visuale is defined
   - block:
     - name: Set service cron file
@@ -33,8 +33,8 @@ tasks:
         content: |
           MAILTO=""
           PATH=/bin:/usr/bin:/usr/local/bin
-          */6 * * * * ./buri -t go -a buri -g no/cantara/gotools > /dev/null
-          */6 * * * * ./buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
+          */6 * * * * ~/buri -t go -a buri -g no/cantara/gotools > /dev/null
+          */6 * * * * ~/buri -t go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
           {{ ('*/6 * * * * ' + service_exec) if service_exec is defined }}
           {{ health_cron if health_cron is defined }}
           {{ extra_service_cron if extra_service_cron is defined }}

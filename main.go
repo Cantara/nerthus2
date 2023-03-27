@@ -4,29 +4,19 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/apenella/go-ansible/pkg/execute"
-	"github.com/apenella/go-ansible/pkg/playbook"
-	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/gober/syncmap"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
-	"github.com/cantara/nerthus2/ansible"
 	"github.com/cantara/nerthus2/message"
-	"github.com/cantara/nerthus2/system/service"
 	"github.com/gin-gonic/gin"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"gopkg.in/yaml.v3"
-	"io"
 	"io/fs"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -74,11 +64,13 @@ var bufPool = sync.Pool{
 func main() {
 	flag.Parse()
 	if bootstrap {
+		/* TODO: FIXME: REMOVE!!!! COMMENT
 		_, err := GitCloneEnvironment(bootstrapEnv)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		Execute(bootstrapEnv)
+		*/
+		ExecuteEnv(bootstrapEnv)
 		return
 	}
 	if gitToken == "" {
@@ -96,13 +88,8 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo for bootstrapped environment")
 		}
-		go Execute(bootstrapEnv)
+		go ExecuteEnv(bootstrapEnv)
 	}
-	/*
-		bootstrap = true
-		gitToken = "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"
-		gitRepo = "github.com/SindreBrurberg/nerthus-test-config"
-	*/
 	portString := os.Getenv("webserver.port")
 	port, err := strconv.Atoi(portString)
 	if err != nil {
@@ -113,112 +100,35 @@ func main() {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
 
-	serv.API.PUT("/environment/:env", func(c *gin.Context) {
-	})
-
-	serv.API.PUT("/provision/:artifactId", func(c *gin.Context) {
-		artifactId := c.Param("artifactId")
-		auth := webserver.GetAuthHeader(c)
-		if auth == "" {
-			webserver.ErrorResponse(c, "authorization not provided", http.StatusForbidden)
-			return
-		}
-		if auth != os.Getenv("authkey") {
-			webserver.ErrorResponse(c, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		/*
-			_, err := webserver.UnmarshalBody[service](c)
-			if err != nil {
-				webserver.ErrorResponse(c, err.Error(), http.StatusBadRequest)
-				return
-			}
-		*/
-
-		buff := bufPool.Get().(*bytes.Buffer)
-		defer bufPool.Put(buff)
-
-		exec := execute.NewDefaultExecute(
-			execute.WithWrite(io.Writer(buff)),
-		)
-
-		ansiblePlaybookOptions := &playbook.AnsiblePlaybookOptions{
-			ExtraVars: map[string]interface{}{
-				"region":    "eu-west-3",             //"ap-northeast-1",
-				"ami":       "ami-00575c0cbc20caf50", //"ami-0bba69335379e17f8",
-				"cidr_base": "10.110.0",
-				"service":   artifactId,
-				"env":       "exoreaction-lab",
-				"zone":      "lab.exoreaction.infra",
-			},
-		}
-
-		pb := &playbook.AnsiblePlaybookCmd{
-			Playbooks:      []string{"playbook.yml"},
-			Exec:           exec,
-			StdoutCallback: "json",
-			Options:        ansiblePlaybookOptions,
-		}
-
-		err = pb.Run(context.TODO())
+	serv.API.PUT("/:env", func(c *gin.Context) {
+		env := c.Params.ByName("env")
+		_, err := GitCloneEnvironment(env)
 		if err != nil {
-			log.WithError(err).Error("while running ansible playbook")
-			webserver.ErrorResponse(c, err.Error(), http.StatusInternalServerError)
-			return
+			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
+		ExecuteEnv(env)
+	})
 
-		res, err := results.ParseJSONResultsStream(io.Reader(buff))
+	serv.API.PUT("/:env/:sys", func(c *gin.Context) {
+		env := c.Params.ByName("env")
+		sys := c.Params.ByName("sys")
+		_, err := GitCloneEnvironment(env)
 		if err != nil {
-			log.WithError(err).Fatal("while parsing json result stream")
+			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
-
-		msgOutput := struct {
-			Host    string `json:"host"`
-			Message string `json:"message"`
-		}{}
-
-		for _, play := range res.Plays {
-			for _, task := range play.Tasks {
-				for _, content := range task.Hosts {
-					err = json.Unmarshal([]byte(fmt.Sprint(content.Stdout)), &msgOutput)
-					if err != nil {
-						panic(err)
-					}
-
-					fmt.Printf("[%s] %s\n", msgOutput.Host, msgOutput.Message)
-				}
-			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "service added"})
-		return
+		ExecuteSys(env, sys)
 	})
 
-	serv.API.PUT("/deploy/:artifactId", func(c *gin.Context) {
+	serv.API.PUT("/:env/:sys/:serv", func(c *gin.Context) {
+		env := c.Params.ByName("env")
+		sys := c.Params.ByName("sys")
+		serv := c.Params.ByName("serv")
+		_, err := GitCloneEnvironment(env)
+		if err != nil {
+			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "service", serv)
+		}
+		ExecuteServ(env, sys, serv)
 	})
-
-	/*
-			hc := make(chan message.Action, 10)
-			hostActions.Set("testHost", hc)
-			hc <- message.Action{
-				Action: message.Playbook,
-				AnsiblePlaybook: `---
-		- name: Test playbook
-		  hosts: localhost
-		  connection: local
-		  tasks:
-		    - name: Ansible | Print test
-		      debug:
-		        msg: "test print"
-		    - name: Ansible | Skipp me
-		      debug:
-		        msg: "test print"
-		      when: false
-		`,
-				ExtraVars: nil,
-			}
-	*/
 
 	websocket.Serve[message.Action](serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
 		host := p.ByName("host")
@@ -264,93 +174,6 @@ func main() {
 
 var hostActions = syncmap.New[chan message.Action]()
 
-func ArrayContains(arr []string, val string) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-func GetService(u *url.URL) (serv service.Service, err error) {
-	log.Trace("GetService", "url", u.String())
-	resp, err := http.Get(u.String())
-	if err != nil {
-		return
-	}
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("get miss")
-		return
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			log.WithError(err).Debug("while closing response body")
-		}
-	}()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	err = yaml.Unmarshal(data, &serv)
-	return
-}
-
-type Condition struct {
-	Field  string   `json:"Field"`
-	Values []string `json:"Values"`
-}
-type Action struct {
-	TargetGroupName string `json:"TargetGroupName"`
-	Type            string `json:"Type"`
-}
-
-type Rule struct {
-	Conditions []Condition `json:"Conditions"`
-	Actions    []Action    `json:"Actions"`
-	Priority   int         `json:"Priority"`
-}
-
-func ReadRoleDir(dir fs.FS, path string, roles map[string]ansible.Role) error {
-	_, err := dir.Open(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-	return fs.WalkDir(dir, path, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		b, err := fs.ReadFile(dir, path)
-		if err != nil {
-			return err
-		}
-		var role ansible.Role
-		err = yaml.Unmarshal(b, &role)
-		if err != nil {
-			return err
-		}
-		name := strings.TrimSuffix(d.Name(), ".yml")
-		role.Id = name
-		roles[name] = role
-		return nil
-	})
-}
-
-// dir, err := os.MkdirTemp(".", "config-repo")
-//
-//	if err != nil {
-//		log.WithError(err).Fatal("while creating tmpdir for git clone")
-//	}
-//
-// defer os.RemoveAll(dir)
-
 func GitAuth() *gitHttp.BasicAuth {
 	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
 		Username: "nerthus",
@@ -370,9 +193,12 @@ func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 			if err != nil {
 				return
 			}
-			err = r.Fetch(&git.FetchOptions{
-				Auth: GitAuth(),
-			})
+			var w *git.Worktree
+			w, err = r.Worktree()
+			if err != nil {
+				return
+			}
+			err = w.Pull(&git.PullOptions{Auth: GitAuth()})
 			if errors.Is(err, git.NoErrAlreadyUpToDate) {
 				err = nil
 			}

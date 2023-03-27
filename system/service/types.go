@@ -1,14 +1,12 @@
 package service
 
 type Service struct {
-	Name            string       `yaml:"name"`
-	ServiceType     string       `yaml:"service_type"`
-	HealthType      string       `yaml:"health_type"`
-	ArtifactId      string       `yaml:"artifact_id"`
-	ArtifactGroup   string       `yaml:"artifact_group"`
-	ArtifactRelease string       `yaml:"artifact_release"`
-	Dependencies    []string     `yaml:"dependencies"`
-	Requirements    Requirements `yaml:"requirements"`
+	Name         string       `yaml:"name"`
+	ServiceType  string       `yaml:"service_type"`
+	HealthType   string       `yaml:"health_type"`
+	Artifact     Artifact     `yaml:"artifact""`
+	Dependencies []string     `yaml:"dependencies"`
+	Requirements Requirements `yaml:"requirements"`
 }
 type Requirements struct {
 	RAM              string `yaml:"ram"`
@@ -18,4 +16,12 @@ type Requirements struct {
 	WebserverPortKey string `yaml:"webserver_port_key"`
 	NotClusterAble   bool   `yaml:"not_cluster_able"`
 	IsFrontend       bool   `yaml:"is_frontend"`
+}
+type Artifact struct {
+	Id       string `yaml:"id"`
+	Group    string `yaml:"group"`
+	Release  string `yaml:"release"`
+	Snapshot string `yaml:"snapshot"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
 }
