@@ -64,12 +64,10 @@ var bufPool = sync.Pool{
 func main() {
 	flag.Parse()
 	if bootstrap {
-		/* TODO: FIXME: REMOVE!!!! COMMENT
 		_, err := GitCloneEnvironment(bootstrapEnv)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		*/
 		ExecuteEnv(bootstrapEnv)
 		return
 	}
