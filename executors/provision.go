@@ -247,7 +247,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 		"name_base":          sys.Scope,
 		"vpc_name":           sys.VPC,
 		"key_name":           sys.Key,
-		"certificate_arn":    env.Cert,
+		"fqdn":               env.FQDN,
 		"loadbalancer_name":  sys.Loadbalancer,
 		"loadbalancer_group": sys.LoadbalancerGroup,
 		"cidr_base":          sys.CIDR,

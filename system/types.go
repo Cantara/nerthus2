@@ -8,7 +8,7 @@ import (
 
 type Environment struct {
 	Name          string                  `yaml:"name"`
-	Cert          string                  `yaml:"certificate_arn"`
+	FQDN          string                  `yaml:"fqdn"`
 	Vars          Vars                    `yaml:"vars"`
 	Systems       []string                `yaml:"systems"`
 	Nerthus       string                  `yaml:"nerthus_host"`
