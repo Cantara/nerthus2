@@ -65,6 +65,7 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if err != nil {
 		return
 	}
+	config.FS = sysFS
 	config.Dir = dir
 	if config.OSName == "" {
 		config.OSName = env.OSName

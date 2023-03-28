@@ -127,9 +127,9 @@ func NodeBootstrapVars(env system.Environment, sys system.System, serv system.Se
 	var allFiles []file.File
 	if serv.Dirs != nil {
 		for localDir, nodeDir := range *serv.Dirs {
-			files, err := dirReader.ReadFilesFromDir(env.FS, sys.Dir, localDir, nodeDir)
+			files, err := dirReader.ReadFilesFromDir(sys.FS, localDir, nodeDir)
 			if err != nil {
-				log.WithError(err).Error("while reading files from disk", "env", env.FS, "config", sys.Dir, "local", localDir, "node", nodeDir)
+				log.WithError(err).Error("while reading files from disk", "sys", sys.FS, "local", localDir, "node", nodeDir)
 				continue
 			}
 			if len(allFiles) == 0 {

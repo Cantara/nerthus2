@@ -9,16 +9,16 @@ import (
 	"github.com/cantara/nerthus2/configManager/file"
 )
 
-func ReadFilesFromDir(envFS fs.FS, configDir, localDir, nodeDir string) (files []file.File, err error) {
-	filesDir := filepath.Clean(fmt.Sprintf("%s/files/%s", configDir, localDir))
-	err = fs.WalkDir(envFS, filesDir, func(path string, d fs.DirEntry, err error) error {
+func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File, err error) {
+	filesDir := filepath.Clean(fmt.Sprintf("files/%s", localDir))
+	err = fs.WalkDir(sysFS, filesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			return nil
 		}
-		b, err := fs.ReadFile(envFS, path)
+		b, err := fs.ReadFile(sysFS, path)
 		if err != nil {
 			return err
 		}

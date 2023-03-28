@@ -37,6 +37,7 @@ type System struct {
 	CIDR              string                  `yaml:"cidr_base"`
 	Zone              string                  `yaml:"zone"`
 	Roles             map[string]ansible.Role `yaml:",omitempty"`
+	FS                fs.FS                   `yaml:",omitempty"`
 	Dir               string                  `yaml:",omitempty"`
 }
 

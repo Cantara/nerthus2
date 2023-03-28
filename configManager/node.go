@@ -43,7 +43,7 @@ func GenerateProperties(serv system.Service) (propertiesName, properties string,
 	return
 }
 
-func GenerateNodeVars(envFS fs.FS, configDir string, serv system.Service, nodeName string, nodeNum int) (vars map[string]any, err error) {
+func GenerateNodeVars(sysFS fs.FS, configDir string, serv system.Service, nodeName string, nodeNum int) (vars map[string]any, err error) {
 	vars["hostname"] = nodeName
 	vars["server_number"] = strconv.Itoa(nodeNum)
 
@@ -58,9 +58,9 @@ func GenerateNodeVars(envFS fs.FS, configDir string, serv system.Service, nodeNa
 	var allFiles []file.File
 	if serv.Dirs != nil {
 		for localDir, nodeDir := range *serv.Dirs {
-			files, err := dirReader.ReadFilesFromDir(envFS, configDir, localDir, nodeDir)
+			files, err := dirReader.ReadFilesFromDir(sysFS, localDir, nodeDir)
 			if err != nil {
-				log.WithError(err).Error("while reading files from disk", "env", envFS, "config", configDir, "local", localDir, "node", nodeDir)
+				log.WithError(err).Error("while reading files from disk", "sys", sysFS, "config", configDir, "local", localDir, "node", nodeDir)
 				continue
 			}
 			if len(allFiles) == 0 {
