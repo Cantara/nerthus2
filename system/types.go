@@ -13,7 +13,8 @@ type Environment struct {
 	Systems       []string                `yaml:"systems"`
 	Nerthus       string                  `yaml:"nerthus_host"`
 	Visuale       string                  `yaml:"visuale_host"`
-	AMI           string                  `yaml:"ami"`
+	OSName        string                  `yaml:"os_name"`
+	OSArch        string                  `yaml:"os_arch"`
 	InstanceType  string                  `yaml:"instance_type"`
 	Roles         map[string]ansible.Role `yaml:",omitempty"`
 	FS            fs.FS                   `yaml:",omitempty"`
@@ -30,7 +31,8 @@ type System struct {
 	Key               string                  `yaml:"key"`
 	Loadbalancer      string                  `yaml:"loadbalancer"`
 	LoadbalancerGroup string                  `yaml:"loadbalancerGroup"`
-	AMI               string                  `yaml:"ami"`
+	OSName            string                  `yaml:"os_name"`
+	OSArch            string                  `yaml:"os_arch"`
 	InstanceType      string                  `yaml:"instance_type"`
 	CIDR              string                  `yaml:"cidr_base"`
 	Zone              string                  `yaml:"zone"`
@@ -56,7 +58,8 @@ type Service struct {
 	SecurityGroup      string                      `yaml:"security_group"`
 	TargetGroup        string                      `yaml:"target_group"`
 	IAM                string                      `yaml:"iam"`
-	AMI                string                      `yaml:"ami"`
+	OSName             string                      `yaml:"os_name"`
+	OSArch             string                      `yaml:"os_arch"`
 	InstanceType       string                      `yaml:"instance_type"`
 	WebserverPort      *int                        `yaml:"webserver_port,omitempty"`
 	Properties         *string                     `yaml:"properties,omitempty"`

@@ -66,8 +66,11 @@ func System(env system.Environment, systemDir string) (config system.System, err
 		return
 	}
 	config.Dir = dir
-	if config.AMI == "" {
-		config.AMI = env.AMI
+	if config.OSName == "" {
+		config.OSName = env.OSName
+	}
+	if config.OSArch == "" {
+		config.OSArch = env.OSArch
 	}
 	if config.InstanceType == "" {
 		config.InstanceType = env.InstanceType
@@ -112,8 +115,11 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 	if sys.Name != serv.Name {
 		extra = fmt.Sprintf("-%s", serv.Name)
 	}
-	if serv.AMI == "" {
-		serv.AMI = sys.AMI
+	if serv.OSName == "" {
+		serv.OSName = sys.OSName
+	}
+	if serv.OSArch == "" {
+		serv.OSArch = sys.OSArch
 	}
 	if serv.InstanceType == "" {
 		serv.InstanceType = sys.InstanceType
