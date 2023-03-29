@@ -14,9 +14,9 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var json = jsoniter.ConfigFastest
@@ -124,7 +124,7 @@ func AnsibleExecutor(action AnsibleAction) {
 	}
 }
 
-func ActionHandler(action message.Action) (resp message.Response) {
+func ActionHandler(action message.Action, resp chan<- websocket.Write[message.Action]) {
 	switch action.Action {
 	case message.RoleUpdate:
 	case message.Playbook:
@@ -132,6 +132,13 @@ func ActionHandler(action message.Action) (resp message.Response) {
 		go func() {
 			for status := range result {
 				log.Info(status.Name, "status", status.Status)
+				action.Response = &message.Response{
+					Status:  status.Status,
+					Message: status.Name,
+				}
+				resp <- websocket.Write[message.Action]{
+					Data: action,
+				}
 			}
 		}()
 		AnsibleExecutor(AnsibleAction{
@@ -152,27 +159,31 @@ func NerthusConnector(ctx context.Context) {
 
 	reader, writer, err := websocket.Dial[message.Action](u, ctx)
 	if err != nil {
-		log.WithError(err).Fatal("while connecting to nerthus", "url", u.String())
+		log.WithError(err).Error("while connecting to nerthus", "url", u.String())
+		time.Sleep(15 * time.Second)
+		return
 	}
 	defer close(writer)
 	for action := range reader {
-		resp := ActionHandler(action)
-		action.Response = &resp
+		ActionHandler(action, writer)
+		//action.Response = &resp
 
-		errChan := make(chan error, 1)
-		select {
-		case <-ctx.Done():
-			return
-		case writer <- websocket.Write[message.Action]{
-			Data: action,
-			Err:  errChan,
-		}:
-			err := <-errChan
-			if err != nil {
-				log.WithError(err).Error("unable to write response to nerthus", "response", resp, "action", action,
-					"url", u.String(), "response_type", reflect.TypeOf(resp), "action_type", reflect.TypeOf(action))
-				return //TODO: continue
+		/*
+			errChan := make(chan error, 1)
+			select {
+			case <-ctx.Done():
+				return
+			case writer <- websocket.Write[message.Action]{
+				Data: action,
+				Err:  errChan,
+			}:
+				err := <-errChan
+				if err != nil {
+					log.WithError(err).Error("unable to write response to nerthus", "response", resp, "action", action,
+						"url", u.String(), "response_type", reflect.TypeOf(resp), "action_type", reflect.TypeOf(action))
+					return //TODO: continue
+				}
 			}
-		}
+		*/
 	}
 }
