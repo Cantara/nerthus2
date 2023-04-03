@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func WriteNodePlay(nodeDir, nodeName string, play []byte, bootstrap bool) (err error) {
@@ -224,7 +225,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		vars["webserver_port"] = serv.WebserverPort
 	}
 	for service, clusterName := range serv.Hosts {
-		vars[fmt.Sprintf("%s_cluster_name", service)] = clusterName
+		vars[fmt.Sprintf("%s_cluster_name", strings.ReplaceAll(service, "-", "_"))] = clusterName
 	}
 	if bootstrap {
 		boots := make([]string, len(serv.NodeNames))

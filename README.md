@@ -2,6 +2,10 @@
 
 ## Vars
 
+### Replacements
+
+* All `-` will be replaced with `_`, so use `_` in playbooks
+
 ### Provisioning
     region: ap-northeast-1
     #os_name: Ubuntu Kinetic 22.10
