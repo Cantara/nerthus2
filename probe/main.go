@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -70,7 +71,7 @@ func AnsibleExecutor(action AnsibleAction) {
 		log.WithError(err).Fatal("unable to write tmp playbook")
 	}
 
-	exec := execute.NewDefaultExecute(
+	executor := execute.NewDefaultExecute(
 		execute.WithWrite(io.Writer(buff)),
 	)
 
@@ -85,7 +86,7 @@ func AnsibleExecutor(action AnsibleAction) {
 
 	pb := &playbook.AnsiblePlaybookCmd{
 		Playbooks:      []string{f.Name()},
-		Exec:           exec,
+		Exec:           executor,
 		StdoutCallback: "json",
 		Options:        ansiblePlaybookOptions,
 	}
@@ -95,6 +96,7 @@ func AnsibleExecutor(action AnsibleAction) {
 	err = pb.Run(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("while running ansible playbook")
+		exec.Command("sudo", "reboot").Run()
 		return
 	}
 
