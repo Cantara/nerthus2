@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/apenella/go-ansible v1.1.7
-	github.com/aws/aws-sdk-go-v2 v1.17.7
+	github.com/aws/aws-sdk-go-v2 v1.17.8
 	github.com/aws/aws-sdk-go-v2/config v1.18.19
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.8
 	github.com/cantara/bragi v0.6.7
