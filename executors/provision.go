@@ -266,7 +266,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 	if numberOfFrontendServices == 1 {
 		vars["default_actions"] = []Action{
 			{
-				TargetGroupName: sys.Services[0].TargetGroup,
+				TargetGroupName: frontendTargetGroups[0],
 				Type:            "forward",
 			},
 		}
