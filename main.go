@@ -122,6 +122,7 @@ func main() {
 	serv.API.PUT("/:env/:sys/:serv", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if _, ok := environments[env]; !ok {
+			log.Warning("put aborted", "env", env, "envs", keys(environments))
 			c.AbortWithStatus(404)
 			return
 		}
@@ -175,7 +176,7 @@ func main() {
 		log.Info("reader closed, ending websocket function")
 	})
 
-	log.Info("starting webserver", "environments", environments)
+	log.Info("starting webserver", "environments", keys(environments))
 	serv.Run()
 }
 
@@ -286,4 +287,14 @@ func GitBootstrap(r *git.Repository, env string) {
 	if err != nil {
 		log.WithError(err).Fatal("while pushing")
 	}
+}
+
+func keys[T any](m map[string]T) (keys []string) {
+	keys = make([]string, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return
 }
