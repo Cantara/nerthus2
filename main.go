@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"errors"
@@ -11,6 +10,7 @@ import (
 	"github.com/cantara/gober/syncmap"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
+	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
 	"github.com/go-git/go-git/v5"
@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -55,15 +54,16 @@ func init() {
 	flag.StringVar(&bootstrapEnv, "e", defaultSystemName, systemNameUsage+" (shorthand)")
 }
 
-var bufPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
-}
+var environments map[string]config.BootstrapVars
 
 func main() {
 	flag.Parse()
 	if bootstrap {
+		environments[bootstrapEnv] = config.BootstrapVars{
+			GitToken: gitToken,
+			GitRepo:  gitRepo,
+			EnvName:  bootstrapEnv,
+		}
 		_, err := GitCloneEnvironment(bootstrapEnv)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
@@ -72,9 +72,11 @@ func main() {
 		return
 	}
 	if gitToken == "" {
-		gitToken = os.Getenv("git.token")
-		gitRepo = os.Getenv("git.repo")
-		bootstrapEnv = os.Getenv("env")
+		environments[os.Getenv("env")] = config.BootstrapVars{
+			GitToken: os.Getenv("git.token"),
+			GitRepo:  os.Getenv("git.repo"),
+			EnvName:  os.Getenv("env"),
+		}
 	}
 	_, err := os.ReadDir("systems/" + bootstrapEnv)
 	if err != nil {
@@ -100,6 +102,10 @@ func main() {
 
 	serv.API.PUT("/:env", func(c *gin.Context) {
 		env := c.Params.ByName("env")
+		if _, ok := environments[env]; !ok {
+			c.AbortWithStatus(404)
+			return
+		}
 		_, err := GitCloneEnvironment(env)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
@@ -109,6 +115,10 @@ func main() {
 
 	serv.API.PUT("/:env/:sys", func(c *gin.Context) {
 		env := c.Params.ByName("env")
+		if _, ok := environments[env]; !ok {
+			c.AbortWithStatus(404)
+			return
+		}
 		sys := c.Params.ByName("sys")
 		_, err := GitCloneEnvironment(env)
 		if err != nil {
@@ -119,6 +129,10 @@ func main() {
 
 	serv.API.PUT("/:env/:sys/:serv", func(c *gin.Context) {
 		env := c.Params.ByName("env")
+		if _, ok := environments[env]; !ok {
+			c.AbortWithStatus(404)
+			return
+		}
 		sys := c.Params.ByName("sys")
 		serv := c.Params.ByName("serv")
 		_, err := GitCloneEnvironment(env)
@@ -174,18 +188,25 @@ func main() {
 
 var hostActions = syncmap.New[chan message.Action]()
 
-func GitAuth() *gitHttp.BasicAuth {
+func GitAuth(gitConf config.BootstrapVars) *gitHttp.BasicAuth {
 	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
 		Username: "nerthus",
-		Password: gitToken,
+		Password: gitConf.GitToken,
 	}
 }
 
+var ErrEnvNotFound = errors.New("environment not found")
+
 func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 	// Clones the repository into the given dir, just as a normal git clone does
+	gitConf, ok := environments[env]
+	if !ok {
+		err = ErrEnvNotFound
+		return
+	}
 	r, err = git.PlainClone("systems/"+env, false, &git.CloneOptions{
-		Auth: GitAuth(),
-		URL:  fmt.Sprintf("https://%s.git", gitRepo),
+		Auth: GitAuth(gitConf),
+		URL:  fmt.Sprintf("https://%s.git", gitConf.GitToken),
 	})
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
@@ -198,7 +219,7 @@ func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 			if err != nil {
 				return
 			}
-			err = w.Pull(&git.PullOptions{Auth: GitAuth()})
+			err = w.Pull(&git.PullOptions{Auth: GitAuth(gitConf)})
 			if errors.Is(err, git.NoErrAlreadyUpToDate) {
 				err = nil
 			}
@@ -210,6 +231,10 @@ func GitCloneEnvironment(env string) (r *git.Repository, err error) {
 }
 
 func GitBootstrap(r *git.Repository, env string) {
+	gitConf, ok := environments[env]
+	if !ok {
+		return
+	}
 	w, err := r.Worktree()
 	if err != nil {
 		log.WithError(err).Fatal("while getting git work tree")
@@ -263,7 +288,7 @@ func GitBootstrap(r *git.Repository, env string) {
 	}
 
 	err = r.Push(&git.PushOptions{
-		Auth: GitAuth(),
+		Auth: GitAuth(gitConf),
 	})
 	if err != nil {
 		log.WithError(err).Fatal("while pushing")
