@@ -46,7 +46,7 @@ type Vars map[string]any
 type Service struct {
 	Name               string                      `yaml:"name"`
 	Vars               Vars                        `yaml:"vars"`
-	Expose             []int                       `yaml:"expose,omitempty"`
+	Expose             map[string]int              `yaml:"expose,omitempty"`
 	Playbook           string                      `yaml:"playbook,omitempty"`
 	Local              string                      `yaml:"local,omitempty"`
 	Git                string                      `yaml:"git,omitempty"`
@@ -62,7 +62,6 @@ type Service struct {
 	OSName             string                      `yaml:"os_name"`
 	OSArch             string                      `yaml:"os_arch"`
 	InstanceType       string                      `yaml:"instance_type"`
-	WebserverPortS     *string                     `yaml:"webserver_port,omitempty"`
 	WebserverPort      *int                        `yaml:"webserver_port,omitempty"`
 	Properties         *string                     `yaml:"properties,omitempty"`
 	Dirs               *map[string]string          `yaml:"dirs,omitempty"`
@@ -70,6 +69,11 @@ type Service struct {
 	ServiceInfo        *service.Service            `yaml:",omitempty"`
 	Roles              map[string]ansible.Role     `yaml:",omitempty"`
 	SecurityGroupRules []ansible.SecurityGroupRule `yaml:",omitempty"`
-	Hosts              map[string]string           `yaml:",omitempty"`
+	ClusterInfo        map[string]ClusterInfo      `yaml:",omitempty"`
 	Generated          bool                        `yaml:",omitempty"`
+}
+
+type ClusterInfo struct {
+	Name  string         `yaml:"name"`
+	Ports map[string]int `yaml:"ports"`
 }

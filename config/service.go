@@ -1,10 +1,8 @@
 package config
 
 import (
-	"fmt"
 	"github.com/cantara/nerthus2/system"
 	"os"
-	"strings"
 )
 
 func ServiceProvisioningVars(env system.Environment, sys system.System, serv system.Service, bootstrap bool) (vars map[string]any) {
@@ -32,12 +30,10 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		"zone":                 sys.Zone,
 		"iam_profile":          serv.IAM,
 		"cluster_name":         serv.ClusterName,
+		"cluster_info":         serv.ClusterInfo,
 	}
 	if serv.WebserverPort != nil {
 		vars["webserver_port"] = serv.WebserverPort
-	}
-	for service, clusterName := range serv.Hosts {
-		vars[fmt.Sprintf("%s_cluster_name", strings.ReplaceAll(service, "-", "_"))] = clusterName
 	}
 	if bootstrap {
 		boots := make([]string, len(serv.NodeNames))

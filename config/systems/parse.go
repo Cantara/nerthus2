@@ -134,7 +134,7 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 	if serv.ClusterName == "" {
 		serv.ClusterName = fmt.Sprintf("%s.%s", serv.Name, sys.Zone)
 	}
-	serv.Hosts = map[string]string{}
+	serv.ClusterInfo = map[string]system.ClusterInfo{}
 	serv.Roles = map[string]ansible.Role{}
 	for k, v := range sys.Roles {
 		serv.Roles[k] = v
@@ -184,21 +184,6 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 		return
 	}
 
-	if serv.WebserverPort == nil && serv.WebserverPortS != nil && strings.HasPrefix(*serv.WebserverPortS, "{{ ") && strings.HasSuffix(*serv.WebserverPortS, " }}") {
-		v := strings.TrimPrefix(strings.TrimSuffix(*serv.WebserverPortS, " }}"), "{{ ")
-		val, ok := sys.Vars[v]
-		if ok {
-			func() {
-				defer func() {
-					r := recover()
-					log.WithError(fmt.Errorf("%v", r)).Error("while setting WebserverPort from vars", "key", v, "val", val)
-				}()
-				valI := val.(int)
-				serv.WebserverPort = &valI
-			}()
-		}
-	}
-
 	if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
 		serv.SecurityGroupRules = []ansible.SecurityGroupRule{
 			{
@@ -238,16 +223,21 @@ func Service(sys system.System, serv *system.Service) (err error) {
 				}
 			}
 			sgrs := make([]ansible.SecurityGroupRule, len(serv.Expose))
-			for i := 0; i < len(sgrs); i++ {
+			i := 0
+			for _, v := range serv.Expose {
 				sgrs[i] = ansible.SecurityGroupRule{
 					Proto:    "tcp",
-					FromPort: strconv.Itoa(serv.Expose[i]),
-					ToPort:   strconv.Itoa(serv.Expose[i]),
+					FromPort: strconv.Itoa(v),
+					ToPort:   strconv.Itoa(v),
 					Group:    fromServ.SecurityGroup,
 				}
+				i++
 			}
 			serv.SecurityGroupRules = append(serv.SecurityGroupRules, sgrs...)
-			fromServ.Hosts[serv.Name] = serv.ClusterName
+			fromServ.ClusterInfo[serv.Name] = system.ClusterInfo{
+				Name:  serv.ClusterName,
+				Ports: serv.Expose,
+			}
 		}
 	}
 	return
@@ -312,36 +302,6 @@ func LocalService(systemDir string, serv *system.Service) (servInfo *service.Ser
 		return
 	}
 	return
-}
-
-func AddOverrides_NIU_(sys *system.System) {
-	for i, serv := range sys.Services {
-		for _, v := range serv.Override {
-			if strings.HasPrefix(v, "ansible") {
-				continue
-			}
-			overrideService := strings.ReplaceAll(v, "services/", "")
-			for oi, overs := range sys.Services {
-				if overs.Name != overrideService {
-					continue
-				}
-				if len(overs.Expose) == 0 {
-					log.Fatal("trying to connect to a service that does not expose any ports", "from", serv, "to", overs)
-				}
-				sys.Services[i].Vars[fmt.Sprintf("%s_host", overs.Name)] = fmt.Sprintf("%s.%s", overs.Name, sys.Services[i].Vars["zone"])
-				sgr := ansible.SecurityGroupRule{
-					Proto:    "tcp",
-					FromPort: strconv.Itoa(overs.Expose[0]),
-					ToPort:   strconv.Itoa(overs.Expose[0]),
-					Group:    serv.SecurityGroup,
-				}
-				if overs.Vars["security_group_rules"] == nil {
-					sys.Services[oi].Vars["security_group_rules"] = []ansible.SecurityGroupRule{}
-				}
-				sys.Services[oi].Vars["security_group_rules"] = append(sys.Services[oi].Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
-			}
-		}
-	}
 }
 
 func arrayContains(arr []string, val string) bool {
