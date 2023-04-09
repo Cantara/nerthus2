@@ -128,7 +128,7 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 	if serv.SecurityGroup == "" {
 		serv.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
 	}
-	if serv.TargetGroup == "" {
+	if serv.TargetGroup == "" && serv.WebserverPort != nil {
 		serv.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
 	}
 	if serv.ClusterName == "" {

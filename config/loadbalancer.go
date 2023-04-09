@@ -62,6 +62,12 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 		if serv.ServiceInfo.Requirements.IsFrontend {
 			continue
 		}
+		if serv.WebserverPort == nil {
+			continue
+		}
+		if serv.TargetGroup == "" {
+			continue
+		}
 		i++
 		rules = append(rules, Rule{
 			Conditions: []Condition{

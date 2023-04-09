@@ -19,7 +19,6 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		"node_names":           serv.NodeNames,
 		"loadbalancer_name":    sys.Loadbalancer,
 		"loadbalancer_group":   sys.LoadbalancerGroup,
-		"target_group_name":    serv.TargetGroup,
 		"security_group_name":  serv.SecurityGroup,
 		"security_group_rules": serv.SecurityGroupRules,
 		"is_frontend":          serv.ServiceInfo.Requirements.IsFrontend,
@@ -34,6 +33,9 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 	}
 	if serv.WebserverPort != nil {
 		vars["webserver_port"] = serv.WebserverPort
+	}
+	if serv.TargetGroup != "" {
+		vars["target_group_name"] = serv.TargetGroup
 	}
 	if bootstrap {
 		boots := make([]string, len(serv.NodeNames))
