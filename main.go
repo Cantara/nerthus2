@@ -54,7 +54,7 @@ func init() {
 	flag.StringVar(&bootstrapEnv, "e", defaultSystemName, systemNameUsage+" (shorthand)")
 }
 
-var environments map[string]config.BootstrapVars
+var environments = make(map[string]config.BootstrapVars)
 
 func main() {
 	flag.Parse()
