@@ -1,7 +1,7 @@
 package system
 
 import (
-	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/executors/ansible"
 	"github.com/cantara/nerthus2/system/service"
 	"io/fs"
 )

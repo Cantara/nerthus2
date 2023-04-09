@@ -3,7 +3,7 @@ package systems
 import (
 	"fmt"
 	log "github.com/cantara/bragi/sbragi"
-	"github.com/cantara/nerthus2/ansible"
+	"github.com/cantara/nerthus2/executors/ansible"
 	"github.com/cantara/nerthus2/system"
 	"github.com/cantara/nerthus2/system/service"
 	"github.com/pkg/errors"
@@ -299,131 +299,7 @@ func LocalService(systemDir string, serv *system.Service) (servInfo *service.Ser
 	return
 }
 
-/*
-func BuildSystemSetup(envFS fs.FS, env system.Environment, roles map[string]ansible.Role, systemDir, dir string) (sys system.System) {
-	System()
-
-	for i, serv := range sys.Services {
-
-		/*
-				sys.Services[i].Node = &ansible.Playbook{
-					Name:       serviceInfo.Name,
-					Hosts:      "localhost",
-					Connection: "local",
-					Vars: map[string]any{
-						"env":          env.Name,
-						"service":      serviceInfo.Name,
-						"service_type": serviceInfo.ServiceType,
-						"health_type":  serviceInfo.HealthType,
-					},
-				}
-				overrides := make([]string, len(serv.Override))
-				oi := 0
-				for k := range serv.Override {
-					overrides[oi] = k
-					oi++
-				}
-				var done []string
-				for _, dep := range serviceInfo.Dependencies {
-					if ArrayContains(overrides, dep) {
-						continue
-					}
-					AddTask(dep, sys.Services[i].Node, &done, systemRoles)
-				}
-				done = []string{}
-				sys.Services[i].Prov = &ansible.Playbook{
-					Name:       serviceInfo.Name,
-					Hosts:      "localhost",
-					Connection: "local",
-					Vars: map[string]any{
-						"env":     env.Name,
-						"service": "ec2-user",
-					},
-				}
-			AddTask("cron", sys.Services[i].Prov, &done, systemRoles)
-		/
-	}
-
-	nerthusVars := map[string]string{
-		"region": os.Getenv("aws.region"), //"eu-central-1", //"ap-northeast-1",
-	}
-
-	for i, serv := range sys.Services {
-		extraVars := map[string]any{}
-		//AddVars(serv.Node.Vars, extraVars)
-		AddVars(env.Vars, extraVars)
-		AddVars(sys.Vars, extraVars)
-		AddVars(serv.Vars, extraVars)
-		AddVars(nerthusVars, extraVars)
-
-		var extra string
-		if sys.Name != serv.Name {
-			extra = fmt.Sprintf("-%s", serv.Name)
-		}
-		if serv.ServiceInfo.ArtifactId != "" {
-			extraVars["artifact_id"] = serv.ServiceInfo.ArtifactId
-		} else {
-			extraVars["artifact_id"] = serv.Name
-		}
-
-		extraVars["system"] = sys.Name
-		extraVars["service"] = serv.Name
-		extraVars["name_base"] = sys.Scope
-		extraVars["vpc_name"] = sys.VPC
-		extraVars["key_name"] = sys.Key
-		extraVars["loadbalancer_name"] = sys.Loadbalancer
-		extraVars["loadbalancer_group"] = sys.LoadbalancerGroup
-		extraVars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
-		log.Info("vars", "key_name", extraVars["key_name"], "vpc_name", extraVars["vpc_name"])
-		if len(serv.NodeNames) == 0 {
-			if serv.NumberOfNodes == 1 {
-				serv.NodeNames = []string{
-					fmt.Sprintf("%s%s", sys.Scope, extra),
-				}
-			} else {
-				serv.NodeNames = make([]string, serv.NumberOfNodes)
-				for num := 1; num <= serv.NumberOfNodes; num++ {
-					serv.NodeNames[num-1] = fmt.Sprintf("%s%s-%d", sys.Scope, extra, num)
-				}
-			}
-		}
-		if len(serv.NodeNames) != serv.NumberOfNodes {
-			log.Fatal("provided node names does not match number of nodes", "numberOfNodes", serv.NumberOfNodes, "nodeNames", serv.NodeNames)
-		}
-		extraVars["node_names"] = serv.NodeNames
-		if serv.SecurityGroup == "" {
-			serv.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
-		}
-		extraVars["security_group_name"] = serv.SecurityGroup
-		if serv.TargetGroup == "" && serv.WebserverPort != nil {
-			serv.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
-		}
-		extraVars["target_group_name"] = serv.TargetGroup
-		serv.Vars = extraVars
-
-		if serv.Vars["security_group_rules"] == nil {
-			serv.Vars["security_group_rules"] = []ansible.SecurityGroupRule{}
-		}
-		if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
-			sgr := ansible.SecurityGroupRule{
-				Proto:    "tcp",
-				FromPort: strconv.Itoa(*serv.WebserverPort),
-				ToPort:   strconv.Itoa(*serv.WebserverPort),
-				Group:    sys.LoadbalancerGroup,
-			}
-			serv.Vars["security_group_rules"] = append(serv.Vars["security_group_rules"].([]ansible.SecurityGroupRule), sgr)
-			serv.Vars["webserver_port"] = strconv.Itoa(*serv.WebserverPort)
-		}
-
-		sys.Services[i] = serv
-		AddVars(serv.Vars, sys.Services[i].Node.Vars)
-	}
-	//Add overrides
-	return
-}
-*/
-
-func AddOverrides(sys *system.System) {
+func AddOverrides_NIU_(sys *system.System) {
 	for i, serv := range sys.Services {
 		for _, v := range serv.Override {
 			if strings.HasPrefix(v, "ansible") {

@@ -1,4 +1,4 @@
-package executors
+package executor
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"github.com/apenella/go-ansible/pkg/stdoutcallback/results"
 	log "github.com/cantara/bragi/sbragi"
 	"io"
+	"os"
 	"sync"
 )
 
@@ -18,6 +19,12 @@ type TaskResult struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
 	Command string `json:"command"`
+}
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
 }
 
 func Execute(playbookPath string, extraVars map[string]any, ctx context.Context) (resultChan <-chan TaskResult) {
@@ -80,8 +87,16 @@ func Execute(playbookPath string, extraVars map[string]any, ctx context.Context)
 	return
 }
 
-var bufPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
+func WriteNodePlay(nodeDir, nodeName string, play []byte, bootstrap bool) (err error) {
+	os.Mkdir(nodeDir, 0750)
+	if bootstrap {
+		nodeName = fmt.Sprintf("%s_bootstrap", nodeName)
+	}
+	fn := fmt.Sprintf("%s/%s.yml", nodeDir, nodeName)
+	os.Remove(fn)
+	err = os.WriteFile(fn, play, 0640)
+	if err != nil {
+		return
+	}
+	return
 }

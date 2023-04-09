@@ -2,24 +2,25 @@ package executors
 
 import (
 	"context"
+	"fmt"
+	ansibleExecutor "github.com/cantara/nerthus2/executors/ansible/executor"
+	"os"
+	"strings"
 )
 
-type Condition struct {
-	Field  string   `json:"Field"`
-	Values []string `json:"Values"`
-}
-type Action struct {
-	TargetGroupName string `json:"TargetGroupName"`
-	Type            string `json:"Type"`
+func ExecuteLoadbalancer(dir string, vars map[string]any, ctx context.Context) (resultChan <-chan ansibleExecutor.TaskResult) {
+	return ansibleExecutor.Execute(FindPlayPath(dir, "loadbalancer.yml"), vars, ctx)
 }
 
-type Rule struct {
-	Conditions []Condition `json:"Conditions"`
-	Actions    []Action    `json:"Actions"`
-	Priority   int         `json:"Priority"`
-}
-
-func ExecuteLoadbalancer(dir string, vars map[string]any, ctx context.Context) (resultChan <-chan TaskResult) {
-	play := "loadbalancer.yml"
-	return Execute(dir+"/ansible/"+play, vars, ctx)
+func FindPlayPath(dir, play string) (out string) {
+	parts := strings.Split(dir, "/")
+	for i := len(parts); i > 0; i -= 2 {
+		out = fmt.Sprintf("%s/ansible/%s", strings.Join(parts[:i], "/"), play)
+		_, err := os.Stat(out)
+		if err != nil {
+			continue
+		}
+		return out
+	}
+	return ""
 }

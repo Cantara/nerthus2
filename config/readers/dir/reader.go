@@ -1,4 +1,4 @@
-package dirReader
+package dir
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cantara/nerthus2/configManager/file"
+	"github.com/cantara/nerthus2/config/readers/file"
 )
 
 func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File, err error) {
