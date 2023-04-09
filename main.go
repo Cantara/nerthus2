@@ -58,6 +58,10 @@ var environments = make(map[string]config.BootstrapVars)
 
 func main() {
 	flag.Parse()
+	err := os.MkdirAll("systems", 0750)
+	if err != nil {
+		log.WithError(err).Fatal("while creating systems dir on boot")
+	}
 	if bootstrap {
 		environments[bootstrapEnv] = config.BootstrapVars{
 			GitToken: gitToken,
@@ -77,18 +81,6 @@ func main() {
 			GitRepo:  os.Getenv("git.repo"),
 			EnvName:  os.Getenv("env"),
 		}
-	}
-	_, err := os.ReadDir("systems/" + bootstrapEnv)
-	if err != nil {
-		err = os.MkdirAll("systems", 0750)
-		if err != nil {
-			log.WithError(err).Fatal("while creating systems dir on first boot")
-		}
-		_, err = GitCloneEnvironment(bootstrapEnv)
-		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo for bootstrapped environment")
-		}
-		go ExecuteEnv(bootstrapEnv)
 	}
 	portString := os.Getenv("webserver.port")
 	port, err := strconv.Atoi(portString)
