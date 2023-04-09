@@ -184,6 +184,21 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 		return
 	}
 
+	if serv.WebserverPort == nil && serv.WebserverPortS != nil && strings.HasPrefix(*serv.WebserverPortS, "{{ ") && strings.HasSuffix(*serv.WebserverPortS, " }}") {
+		v := strings.TrimPrefix(strings.TrimSuffix(*serv.WebserverPortS, " }}"), "{{ ")
+		val, ok := sys.Vars[v]
+		if ok {
+			func() {
+				defer func() {
+					r := recover()
+					log.WithError(fmt.Errorf("%v", r)).Error("while setting WebserverPort from vars", "key", v, "val", val)
+				}()
+				valI := val.(int)
+				serv.WebserverPort = &valI
+			}()
+		}
+	}
+
 	if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
 		serv.SecurityGroupRules = []ansible.SecurityGroupRule{
 			{

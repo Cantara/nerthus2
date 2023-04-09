@@ -62,6 +62,7 @@ type Service struct {
 	OSName             string                      `yaml:"os_name"`
 	OSArch             string                      `yaml:"os_arch"`
 	InstanceType       string                      `yaml:"instance_type"`
+	WebserverPortS     *string                     `yaml:"webserver_port,omitempty"`
 	WebserverPort      *int                        `yaml:"webserver_port,omitempty"`
 	Properties         *string                     `yaml:"properties,omitempty"`
 	Dirs               *map[string]string          `yaml:"dirs,omitempty"`
