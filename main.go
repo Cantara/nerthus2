@@ -175,6 +175,7 @@ func main() {
 		log.Info("reader closed, ending websocket function")
 	})
 
+	log.Info("starting webserver", "environments", environments)
 	serv.Run()
 }
 
