@@ -67,7 +67,7 @@ func getServers() (servers []Server, err error) {
 		return
 	}
 	if len(result.Reservations) < 1 {
-		err = fmt.Errorf("No servers managed by nerthus")
+		err = fmt.Errorf("no servers managed by nerthus")
 		return
 	}
 	/* if len(result.Reservations) > 1 {
