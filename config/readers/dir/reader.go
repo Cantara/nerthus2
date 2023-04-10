@@ -24,7 +24,7 @@ func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File,
 		}
 		files = append(files, file.File{
 			Name:    nodeDir + strings.TrimPrefix(path, filesDir),
-			Content: string(b),
+			Content: b,
 		})
 		return nil
 	})
