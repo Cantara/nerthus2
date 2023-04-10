@@ -7,7 +7,7 @@ import (
 
 type File struct {
 	Name    string `yaml:"name"`
-	Content []byte `yaml:"content"`
+	Content string `yaml:"content"`
 }
 
 func FilesFromConfig(fileMap map[string]string) (files []File) {
@@ -16,7 +16,7 @@ func FilesFromConfig(fileMap map[string]string) (files []File) {
 	for fn, content := range fileMap {
 		files[fileNum] = File{
 			Name:    fn,
-			Content: []byte(content),
+			Content: content,
 		}
 		fileNum++
 	}
