@@ -73,7 +73,7 @@ func GetServers() (servers []Server, err error) {
 				}
 			}
 			servers = append(servers, Server{
-				Host:  aws.ToString(instance.PublicIpAddress),
+				Host:  aws.ToString(instance.PublicDnsName),
 				Name:  serverName,
 				Users: usernames,
 			})
