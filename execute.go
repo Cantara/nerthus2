@@ -94,8 +94,8 @@ func ExecuteEnv(env string) {
 						hostActions.Set(nodeName, ha)
 					}
 					ha <- message.Action{
-						Action:          message.Playbook,
-						AnsiblePlaybook: nodeBootstrapPlayYaml,
+						Action: message.Playbook,
+						Data:   nodeBootstrapPlayYaml,
 					}
 				}
 
@@ -164,8 +164,8 @@ func ExecuteSys(env, sys string) {
 						hostActions.Set(nodeName, ha)
 					}
 					ha <- message.Action{
-						Action:          message.Playbook,
-						AnsiblePlaybook: nodeBootstrapPlayYaml,
+						Action: message.Playbook,
+						Data:   nodeBootstrapPlayYaml,
 					}
 				}
 
@@ -230,8 +230,8 @@ func ExecuteServ(env, sys, serv string) {
 					hostActions.Set(nodeName, ha)
 				}
 				ha <- message.Action{
-					Action:          message.Playbook,
-					AnsiblePlaybook: nodeBootstrapPlayYaml,
+					Action: message.Playbook,
+					Data:   nodeBootstrapPlayYaml,
 				}
 			}
 		}

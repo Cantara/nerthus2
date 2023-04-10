@@ -33,10 +33,10 @@ func TestWebsucker(t *testing.T) {
 		}
 		for i := 0; i < 10; i++ {
 			hostChan <- message.Action{
-				Action:          fmt.Sprintf("test-action-%d", i),
-				AnsiblePlaybook: make([]byte, 1024),
-				ExtraVars:       nil,
-				Response:        nil,
+				Action:    fmt.Sprintf("test-action-%d", i),
+				Data:      make([]byte, 1024),
+				ExtraVars: nil,
+				Response:  nil,
 			}
 			time.Sleep(250 * time.Millisecond)
 		}

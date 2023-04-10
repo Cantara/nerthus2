@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -94,7 +96,7 @@ func main() {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
 
-	serv.API.PUT("/:env", func(c *gin.Context) {
+	serv.API.PUT("/config/:env", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if _, ok := environments[env]; !ok {
 			c.AbortWithStatus(404)
@@ -107,7 +109,7 @@ func main() {
 		ExecuteEnv(env)
 	})
 
-	serv.API.PUT("/:env/:sys", func(c *gin.Context) {
+	serv.API.PUT("/config/:env/:sys", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if _, ok := environments[env]; !ok {
 			c.AbortWithStatus(404)
@@ -121,7 +123,7 @@ func main() {
 		ExecuteSys(env, sys)
 	})
 
-	serv.API.PUT("/:env/:sys/:serv", func(c *gin.Context) {
+	serv.API.PUT("/config/:env/:sys/:serv", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if _, ok := environments[env]; !ok {
 			log.Warning("put aborted", "env", env, "envs", keys(environments))
@@ -137,15 +139,49 @@ func main() {
 		ExecuteServ(env, sys, serv)
 	})
 
-	serv.API.GET("/servers", func(c *gin.Context) {
-		servers, err := aws.GetServers()
-		if err != nil {
-			log.WithError(err).Error("while getting servers from aws")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
-			return
-		}
-		c.JSON(http.StatusOK, servers)
-	})
+	{
+		auth := serv.API.Group("")
+		accounts := gin.Accounts{}
+		accounts[os.Getenv("api.username")] = os.Getenv("api.password")
+		auth.Use(gin.BasicAuth(accounts))
+
+		auth.GET("/servers", func(c *gin.Context) {
+			servers, err := aws.GetServers()
+			if err != nil {
+				log.WithError(err).Error("while getting servers from aws")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+				return
+			}
+			c.JSON(http.StatusOK, servers)
+		})
+
+		auth.PUT("/key/:user/:name", func(c *gin.Context) {
+			var ky key
+			err = c.MustBindWith(&ky, binding.JSON)
+			if err != nil {
+				log.WithError(err).Debug("while binding json body from key put")
+				return
+			}
+			if ky.Name != c.Params.ByName("name") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of key"})
+				return
+			}
+			kys[fmt.Sprintf("%s-%s", c.Params.ByName("user"), ky.Name)] = ky
+
+			var authorizedKeys bytes.Buffer
+			for _, k := range kys {
+				authorizedKeys.WriteString(k.Data)
+				authorizedKeys.WriteRune('\n')
+			}
+			b := authorizedKeys.Bytes()
+			for _, srv := range hostActions.GetMap() {
+				srv <- message.Action{
+					Action: message.AuthorizedKeys,
+					Data:   b,
+				}
+			}
+		})
+	}
 
 	websocket.Serve[message.Action](serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
 		defer close(writer)
@@ -310,3 +346,10 @@ func keys[T any](m map[string]T) (keys []string) {
 	}
 	return
 }
+
+type key struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}
+
+var kys = map[string]key{}

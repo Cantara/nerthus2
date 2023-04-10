@@ -1,10 +1,10 @@
 package message
 
 type Action struct {
-	Action          string            `json:"action"`
-	AnsiblePlaybook []byte            `json:"ansible_playbook"`
-	ExtraVars       map[string]string `json:"extra_vars"`
-	Response        *Response         `json:"response,omitempty"`
+	Action    string            `json:"action"`
+	Data      []byte            `json:"data"`
+	ExtraVars map[string]string `json:"extra_vars"`
+	Response  *Response         `json:"response,omitempty"`
 }
 
 type Response struct {
@@ -14,6 +14,7 @@ type Response struct {
 }
 
 const (
-	RoleUpdate = "RoleUpdate"
-	Playbook   = "Playbook"
+	RoleUpdate     = "RoleUpdate"
+	Playbook       = "Playbook"
+	AuthorizedKeys = "AuthorizedKeys"
 )

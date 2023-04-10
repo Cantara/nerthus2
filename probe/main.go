@@ -21,6 +21,7 @@ import (
 )
 
 var json = jsoniter.ConfigFastest
+var wd, _ = os.Getwd()
 
 func main() {
 	portString := os.Getenv("webserver.port")
@@ -144,10 +145,56 @@ func ActionHandler(action message.Action, resp chan<- websocket.Write[message.Ac
 			}
 		}()
 		AnsibleExecutor(AnsibleAction{
-			Playbook:  action.AnsiblePlaybook,
+			Playbook:  action.Data,
 			ExtraVars: action.ExtraVars,
 			Results:   result,
 		})
+	case message.AuthorizedKeys:
+		f, err := os.OpenFile(wd+"/.ssh/authorized_keys", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0640)
+		if err != nil {
+			log.WithError(err).Error("while setting authorized keys")
+			action.Response = &message.Response{
+				Status:  "FAILED",
+				Message: "while setting authorized keys",
+				Error:   err,
+			}
+			resp <- websocket.Write[message.Action]{
+				Data: action,
+			}
+		}
+		err = WriteAll(f, action.Data)
+		if err != nil {
+			log.WithError(err).Error("while writing authorized keys to file")
+			action.Response = &message.Response{
+				Status:  "FAILED",
+				Message: "while writing authorized keys to file",
+				Error:   err,
+			}
+			resp <- websocket.Write[message.Action]{
+				Data: action,
+			}
+		}
+		action.Response = &message.Response{
+			Status:  "SUCCESS",
+			Message: "wrote authorized keys to file",
+		}
+		resp <- websocket.Write[message.Action]{
+			Data: action,
+		}
+	}
+	return
+}
+
+func WriteAll(w io.Writer, data []byte) (err error) {
+	totalOut := 0
+	var n int
+	for totalOut < len(data) {
+		n, err = w.Write(data[totalOut:])
+		if err != nil {
+			log.WithError(err).Error("while writing all")
+			return
+		}
+		totalOut += n
 	}
 	return
 }
