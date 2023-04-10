@@ -10,6 +10,7 @@ import (
 	"github.com/cantara/gober/syncmap"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
+	"github.com/cantara/nerthus2/aws"
 	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -133,6 +135,16 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "service", serv)
 		}
 		ExecuteServ(env, sys, serv)
+	})
+
+	serv.API.GET("/servers", func(c *gin.Context) {
+		servers, err := aws.GetServers()
+		if err != nil {
+			log.WithError(err).Error("while getting servers from aws")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+		c.JSON(http.StatusOK, servers)
 	})
 
 	websocket.Serve[message.Action](serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {

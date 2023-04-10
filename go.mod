@@ -6,6 +6,7 @@ require (
 	github.com/apenella/go-ansible v1.1.7
 	github.com/aws/aws-sdk-go-v2 v1.17.8
 	github.com/aws/aws-sdk-go-v2/config v1.18.20
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.93.1
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.9
 	github.com/cantara/bragi v0.6.7
 	github.com/cantara/gober v0.15.2
@@ -52,6 +53,7 @@ require (
 	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
