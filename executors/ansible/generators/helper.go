@@ -3,7 +3,7 @@ package generators
 import (
 	"fmt"
 	"github.com/cantara/nerthus2/executors/ansible"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 func PlayToYaml(pb ansible.Playbook) (play []byte, err error) {
