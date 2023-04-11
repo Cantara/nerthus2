@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.17.8
 	github.com/aws/aws-sdk-go-v2/config v1.18.21
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.93.2
-	github.com/aws/aws-sdk-go-v2/service/iam v1.19.9
+	github.com/aws/aws-sdk-go-v2/service/iam v1.19.10
 	github.com/cantara/bragi v0.6.7
 	github.com/cantara/gober v0.15.2
 	github.com/gin-gonic/gin v1.9.0
