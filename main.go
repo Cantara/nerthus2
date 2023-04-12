@@ -8,6 +8,9 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/gober/eventmap"
+	"github.com/cantara/gober/stream"
+	"github.com/cantara/gober/stream/event/store/ondisk"
 	"github.com/cantara/gober/syncmap"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
@@ -139,6 +142,17 @@ func main() {
 		ExecuteServ(env, sys, serv)
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	keyStream, err := ondisk.Init("pubKeys", ctx)
+	if err != nil {
+		log.WithError(err).Fatal("while initializing public key stream")
+	}
+	keyMap, err := eventmap.Init[key](keyStream, "pubkey", "v0.0.1",
+		stream.StaticProvider(log.RedactedString(os.Getenv("pubkey.static_key"))), ctx)
+	if err != nil {
+		log.WithError(err).Fatal("while initializing public key event map")
+	}
 	{
 		auth := serv.API.Group("")
 		accounts := gin.Accounts{}
@@ -157,7 +171,7 @@ func main() {
 
 		auth.PUT("/key/:user/:name", func(c *gin.Context) {
 			var ky key
-			err = c.MustBindWith(&ky, binding.JSON)
+			err := c.MustBindWith(&ky, binding.JSON)
 			if err != nil {
 				log.WithError(err).Debug("while binding json body from key put")
 				return
@@ -166,10 +180,15 @@ func main() {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of key"})
 				return
 			}
-			kys[fmt.Sprintf("%s-%s", c.Params.ByName("user"), ky.Name)] = ky
+			err = keyMap.Set(fmt.Sprintf("%s-%s", c.Params.ByName("user"), ky.Name), ky)
+			if err != nil {
+				log.WithError(err).Error("while storing new public key")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "error while storing new public key"})
+				return
+			}
 
 			var authorizedKeys bytes.Buffer
-			for _, k := range kys {
+			for _, k := range keyMap.GetMap() {
 				authorizedKeys.WriteString(k.Data)
 				authorizedKeys.WriteRune('\n')
 			}
@@ -352,4 +371,4 @@ type key struct {
 	Data string `json:"data"`
 }
 
-var kys = map[string]key{}
+//var kys = map[string]key{}
