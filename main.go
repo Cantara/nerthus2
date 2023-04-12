@@ -279,7 +279,7 @@ func GitCloneEnvironment(env string, environments eventmap.EventMap[config.Boots
 	}
 	r, err = git.PlainClone("systems/"+env, false, &git.CloneOptions{
 		Auth: GitAuth(gitConf),
-		URL:  fmt.Sprintf("https://%s.git", gitConf.GitToken),
+		URL:  fmt.Sprintf("https://%s.git", gitConf.GitRepo),
 	})
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
