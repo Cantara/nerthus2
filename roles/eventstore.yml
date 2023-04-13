@@ -39,6 +39,7 @@ tasks:
     community.docker.docker_container:
       name: eventstore
       image: "eventstore/eventstore{{ tag }}"
+      user: "{{ service_user.uid }}:{{ service_user.group }}"
       pull: true
       volumes:
         - "/var/lib/{{ service }}:/var/lib/eventstore"
