@@ -4,6 +4,7 @@ import (
 	"context"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config"
+	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/config/systems"
 	"github.com/cantara/nerthus2/executors"
 	"github.com/cantara/nerthus2/executors/ansible/executor"
@@ -52,9 +53,9 @@ func ExecuteEnv(env string) {
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
 	}
-	var bootstrapVars *config.BootstrapVars
+	var bootstrapVars *properties.BootstrapVars
 	if bootstrap {
-		bootstrapVars = &config.BootstrapVars{
+		bootstrapVars = &properties.BootstrapVars{
 			GitToken: gitToken,
 			GitRepo:  gitRepo,
 			EnvName:  bootstrapEnv,

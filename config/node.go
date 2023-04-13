@@ -22,13 +22,7 @@ func NodeProvisioningVars(serv system.Service, nodeNum int, systemProvisioningVa
 	return
 }
 
-type BootstrapVars struct {
-	GitToken string
-	GitRepo  string
-	EnvName  string
-}
-
-func NodeBootstrapVars(env system.Environment, sys system.System, serv system.Service, nodeNum int, serviceProvisioningVars map[string]any, bootstrap *BootstrapVars) (vars map[string]any) {
+func NodeBootstrapVars(env system.Environment, sys system.System, serv system.Service, nodeNum int, serviceProvisioningVars map[string]any, bootstrap *properties.BootstrapVars) (vars map[string]any) {
 	vars = map[string]any{}
 	addVars(serviceProvisioningVars, vars)
 	delete(vars, "bootstrap")
@@ -37,16 +31,10 @@ func NodeBootstrapVars(env system.Environment, sys system.System, serv system.Se
 	addVars(sys.Vars, vars)
 	addVars(serv.Vars, vars)
 
-	if bootstrap != nil {
-		vars["git_token"] = bootstrap.GitToken
-		vars["git_repo"] = bootstrap.GitRepo
-		vars["boot_env"] = bootstrap.EnvName
-	}
-
 	vars["hostname"] = serv.NodeNames[nodeNum]
 	vars["server_number"] = strconv.Itoa(nodeNum)
 	if serv.Properties != nil {
-		propertiesName, props, err := properties.Calculate(serv)
+		propertiesName, props, err := properties.Calculate(serv, bootstrap)
 		if err != nil {
 			log.WithError(err).Fatal("temptest")
 			return

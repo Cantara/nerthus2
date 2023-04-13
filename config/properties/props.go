@@ -7,10 +7,17 @@ import (
 	"strings"
 )
 
-func Calculate(serv system.Service) (propertiesName, properties string, err error) {
+type BootstrapVars struct {
+	GitToken string
+	GitRepo  string
+	EnvName  string
+}
+
+func Calculate(serv system.Service, bootstrap *BootstrapVars) (propertiesName, properties string, err error) {
 	if serv.Properties != nil {
 		properties = *serv.Properties
 	}
+
 	if serv.WebserverPort != nil {
 		if serv.ServiceInfo.Requirements.WebserverPortKey == "" {
 			err = ErrHasWebserverPortAndNoKey
@@ -31,6 +38,9 @@ func Calculate(serv system.Service) (propertiesName, properties string, err erro
 		} else {
 			properties = fmt.Sprintf("%s=%d\n%s", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort, properties)
 		}
+	}
+	if bootstrap != nil {
+		properties = fmt.Sprintf("%s=%s\n%s=%s\n%s=%s\n%s", "git_token", bootstrap.GitToken, "git_repo", bootstrap.GitRepo, "boot_env", bootstrap.EnvName, properties)
 	}
 	propertiesName = serv.ServiceInfo.Requirements.PropertiesName
 	return

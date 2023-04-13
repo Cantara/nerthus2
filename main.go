@@ -15,7 +15,7 @@ import (
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
-	"github.com/cantara/nerthus2/config"
+	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -74,11 +74,11 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while initializing public key stream")
 	}
-	environments, err := eventmap.Init[config.BootstrapVars](envStream, "environment", "v0.0.1",
+	environments, err := eventmap.Init[properties.BootstrapVars](envStream, "environment", "v0.0.1",
 		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx)
 
 	if bootstrap {
-		err = environments.Set(bootstrapEnv, config.BootstrapVars{
+		err = environments.Set(bootstrapEnv, properties.BootstrapVars{
 			GitToken: gitToken,
 			GitRepo:  gitRepo,
 			EnvName:  bootstrapEnv,
@@ -94,7 +94,7 @@ func main() {
 		return
 	}
 	if environments.Len() == 0 {
-		err = environments.Set(os.Getenv("env"), config.BootstrapVars{
+		err = environments.Set(os.Getenv("env"), properties.BootstrapVars{
 			GitToken: os.Getenv("git.token"),
 			GitRepo:  os.Getenv("git.repo"),
 			EnvName:  os.Getenv("env"),
@@ -261,7 +261,7 @@ func main() {
 
 var hostActions = syncmap.New[chan message.Action]()
 
-func GitAuth(gitConf config.BootstrapVars) *gitHttp.BasicAuth {
+func GitAuth(gitConf properties.BootstrapVars) *gitHttp.BasicAuth {
 	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
 		Username: "nerthus",
 		Password: gitConf.GitToken,
@@ -270,7 +270,7 @@ func GitAuth(gitConf config.BootstrapVars) *gitHttp.BasicAuth {
 
 //var ErrEnvNotFound = errors.New("environment not found")
 
-func GitCloneEnvironment(env string, environments eventmap.EventMap[config.BootstrapVars]) (r *git.Repository, err error) {
+func GitCloneEnvironment(env string, environments eventmap.EventMap[properties.BootstrapVars]) (r *git.Repository, err error) {
 	// Clones the repository into the given dir, just as a normal git clone does
 	gitConf, err := environments.Get(env)
 	if err != nil {
@@ -303,7 +303,7 @@ func GitCloneEnvironment(env string, environments eventmap.EventMap[config.Boots
 	return
 }
 
-func GitBootstrap(r *git.Repository, env string, gitConf config.BootstrapVars) {
+func GitBootstrap(r *git.Repository, env string, gitConf properties.BootstrapVars) {
 	w, err := r.Worktree()
 	if err != nil {
 		log.WithError(err).Fatal("while getting git work tree")
