@@ -29,6 +29,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		"zone":                 sys.Zone,
 		"iam_profile":          serv.IAM,
 		"cluster_name":         serv.ClusterName,
+		"cluster_ports":        serv.Expose,
 		"cluster_info":         serv.ClusterInfo,
 	}
 	if serv.WebserverPort != nil {
