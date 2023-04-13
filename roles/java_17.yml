@@ -1,0 +1,10 @@
+name: Install Java 17
+dependencies:
+  - role: zulu_repo
+tasks:
+  - name: Install Java 17
+    ansible.builtin.yum:
+      name: zulu17-jdk
+      state: latest
+    become: yes
+    become_user: root
