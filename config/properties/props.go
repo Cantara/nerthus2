@@ -40,7 +40,7 @@ func Calculate(serv system.Service, bootstrap *BootstrapVars) (propertiesName, p
 		}
 	}
 	if bootstrap != nil {
-		properties = fmt.Sprintf("%s=%s\n%s=%s\n%s=%s\n%s", "git_token", bootstrap.GitToken, "git_repo", bootstrap.GitRepo, "boot_env", bootstrap.EnvName, properties)
+		properties = fmt.Sprintf("%s=%s\n%s=%s\n%s=%s\n%s", "git.token", bootstrap.GitToken, "git.repo", bootstrap.GitRepo, "boot_env", bootstrap.EnvName, properties)
 	}
 	propertiesName = serv.ServiceInfo.Requirements.PropertiesName
 	return
