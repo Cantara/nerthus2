@@ -1,6 +1,7 @@
 package system
 
 import (
+	"github.com/cantara/nerthus2/config/readers/file"
 	"github.com/cantara/nerthus2/executors/ansible"
 	"github.com/cantara/nerthus2/system/service"
 	"io/fs"
@@ -65,7 +66,7 @@ type Service struct {
 	WebserverPort      *int                        `yaml:"webserver_port,omitempty"`
 	Properties         *string                     `yaml:"properties,omitempty"`
 	Dirs               *map[string]string          `yaml:"dirs,omitempty"`
-	Files              *map[string]string          `yaml:"files,omitempty"`
+	Files              *map[string]file.File       `yaml:"files,omitempty"`
 	ServiceInfo        *service.Service            `yaml:",omitempty"`
 	Roles              map[string]ansible.Role     `yaml:",omitempty"`
 	SecurityGroupRules []ansible.SecurityGroupRule `yaml:",omitempty"`

@@ -7,16 +7,22 @@ import (
 
 type File struct {
 	Name    string `yaml:"name"`
+	Mode    string `yaml:"mode"`
 	Content string `yaml:"content"`
 }
 
-func FilesFromConfig(fileMap map[string]string) (files []File) {
+func FilesFromConfig(fileMap map[string]File) (files []File) {
 	files = make([]File, len(fileMap))
 	fileNum := 0
-	for fn, content := range fileMap {
+	for fn, file := range fileMap {
+		mode := file.Mode
+		if mode == "" {
+			mode = "0640"
+		}
 		files[fileNum] = File{
 			Name:    fn,
-			Content: content,
+			Mode:    mode,
+			Content: file.Content,
 		}
 		fileNum++
 	}

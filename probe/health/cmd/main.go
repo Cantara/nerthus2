@@ -284,6 +284,8 @@ func serviceTypeFromString(s string) (st serviceType, err error) {
 		st = javaST
 	case "jar":
 		st = javaST
+	case "zip_jar":
+		st = javaST
 	case "go":
 		st = goST
 	case "eventstore":

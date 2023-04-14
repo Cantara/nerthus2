@@ -17,7 +17,7 @@ tasks:
         copy:
           content: "{{ item.content | string }}"
           dest: "~/{{ item.name }}"
-          mode: '0640'
+          mode: "{{ item.mode }}" #0640
         with_items: "{{ files }}"
     become: yes
     become_user: "{{ service }}"

@@ -22,8 +22,13 @@ func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File,
 		if err != nil {
 			return err
 		}
+		inf, err := d.Info()
+		if err != nil {
+			return err
+		}
 		files = append(files, file.File{
 			Name:    nodeDir + strings.TrimPrefix(path, filesDir),
+			Mode:    inf.Mode().String(),
 			Content: string(b),
 		})
 		return nil

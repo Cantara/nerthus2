@@ -69,6 +69,7 @@ func NodeBootstrapVars(env system.Environment, sys system.System, serv system.Se
 	}()
 	if len(allFiles) > 0 {
 		vars["files"] = allFiles
+		vars["dirs"] = file.DirsForFiles(allFiles)
 	}
 
 	vars["health_type"] = serv.ServiceInfo.HealthType
