@@ -47,7 +47,7 @@ tasks:
       restart_policy: always
       ports:
         - 2113:2113
-        - 1113:1113
+        - 1112:1112
       env:
         EVENTSTORE_INSECURE: "true"
         EVENTSTORE_EXT_IP: "0.0.0.0"
