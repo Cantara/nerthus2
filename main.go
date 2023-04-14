@@ -94,10 +94,10 @@ func main() {
 		return
 	}
 	if environments.Len() == 0 {
-		err = environments.Set(os.Getenv("env"), properties.BootstrapVars{
+		err = environments.Set(os.Getenv("boot_env"), properties.BootstrapVars{
 			GitToken: os.Getenv("git.token"),
 			GitRepo:  os.Getenv("git.repo"),
-			EnvName:  os.Getenv("env"),
+			EnvName:  os.Getenv("boot_env"),
 		})
 		if err != nil {
 			log.WithError(err).Fatal("while storing bootstrap env in map", "isBootstrapping", bootstrap, "environments", environments.Len())
