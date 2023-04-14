@@ -11,28 +11,6 @@
                 "acm:*"
             ],
             "Resource": "*"
-        },
-        {
-            "Sid": "VisualEditor1",
-            "Effect": "Allow",
-            "Action": "elasticloadbalancing:*",
-            "Resource": [
-                "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
-                "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*/*",
-                "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
-                "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
-            ]
-        },
-        {
-            "Sid": "VisualEditor2",
-            "Effect": "Allow",
-            "Action": "elasticloadbalancing:*",
-            "Resource": [
-                "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
-                "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
-                "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*/*",
-                "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*"
-            ]
         }
     ]
 }
