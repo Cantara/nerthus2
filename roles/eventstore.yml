@@ -56,4 +56,4 @@ tasks:
         EVENTSTORE_INT_HOST_ADVERTISE_AS: "{{ ip_adder.stdout }}"
         EVENTSTORE_CLUSTER_SIZE: "3"
         EVENTSTORE_CLUSTER_DNS: "{{ cluster_name }}"
-        EVENTSTORE_MAX_APPEND_SIZE: 8388608
+        EVENTSTORE_MAX_APPEND_SIZE: "8388608"
