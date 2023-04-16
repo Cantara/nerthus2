@@ -21,10 +21,10 @@ func TestReader(t *testing.T) {
 		log.Error("wrong amount of files were found")
 		t.Fatal("wrong amount of files were found")
 	}
-	if files[0].Mode != "0664" {
-		t.Fatalf("File mode was not as expected: %s != %s", files[0].Mode, "0664")
+	if files[0].Mode != "0640" {
+		t.Fatalf("File mode was not as expected: %s != %s", files[0].Mode, "0640")
 	}
-	if files[1].Mode != "1755" {
-		t.Fatalf("File mode was not as expected: %s != %s", files[1].Mode, "1755")
+	if files[1].Mode != "1750" {
+		t.Fatalf("File mode was not as expected: %s != %s", files[1].Mode, "1750")
 	}
 }
