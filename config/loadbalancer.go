@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cantara/nerthus2/system"
 	"os"
+	"strings"
 )
 
 type Condition struct {
@@ -89,5 +90,12 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 		})
 	}
 	vars["rules"] = rules
+	if strings.ToLower(os.Getenv("allowAllRegions")) == "true" {
+		if r, ok := sys.Vars["region"]; ok && r != "" {
+			vars["region"] = r
+		} else if r, ok = env.Vars["region"]; ok && r != "" {
+			vars["region"] = r
+		}
+	}
 	return
 }

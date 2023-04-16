@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/cantara/nerthus2/system"
 	"os"
+	"strings"
 )
 
 func ServiceProvisioningVars(env system.Environment, sys system.System, serv system.Service, bootstrap bool) (vars map[string]any) {
@@ -47,6 +48,13 @@ EOF
 su -c "ansible-playbook bootstrap.yml" ec2-user`
 		}
 		vars["bootstrap"] = boots
+	}
+	if strings.ToLower(os.Getenv("allowAllRegions")) == "true" {
+		if r, ok := sys.Vars["region"]; ok && r != "" {
+			vars["region"] = r
+		} else if r, ok = env.Vars["region"]; ok && r != "" {
+			vars["region"] = r
+		}
 	}
 	return
 }
