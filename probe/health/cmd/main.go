@@ -192,7 +192,7 @@ func DefaultWebsiteStatus(healthURL *url.URL, st serviceType) (out baseStatus, e
 	if err != nil {
 		return
 	}
-	name := strings.TrimPrefix("website_", string(st))
+	name := strings.TrimPrefix(string(st), "website_")
 	status := "DOWN"
 	if strings.Contains(strings.ToLower(string(body)), name) {
 		status = "UP"
