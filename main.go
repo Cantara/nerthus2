@@ -229,6 +229,27 @@ func main() {
 			}
 		}()
 
+		var authorizedKeys bytes.Buffer
+		for _, k := range keyMap.GetMap() {
+			authorizedKeys.WriteString(k.Data)
+			authorizedKeys.WriteRune('\n')
+		}
+		b := authorizedKeys.Bytes()
+
+		errChan := make(chan error, 1)
+		writer <- websocket.Write[message.Action]{
+			Data: message.Action{
+				Action: message.AuthorizedKeys,
+				Data:   b,
+			},
+			Err: errChan,
+		}
+		err := <-errChan
+		if err != nil {
+			log.WithError(err).Error("unable to write action to nerthus probe")
+			return //TODO continue
+		}
+
 		hostChan, ok := hostActions.Get(host)
 		if !ok {
 			hostChan = make(chan message.Action, 10)
