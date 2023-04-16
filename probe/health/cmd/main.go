@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	log "github.com/cantara/bragi"
@@ -40,7 +39,7 @@ func init() {
 		reportURLUsage     = "url to report health to ex: https://visuale.cantara.no/api/status/ENV/NAME/host_undefined?service_tag=undefined&service_type=A2A"
 		defaultHealthURL   = "http://localhost:3030/health"
 		healthURLUsage     = "url to get health from"
-		defaultServiceType = string(defaultST)
+		defaultServiceType = ""
 		serviceTypeUsage   = "type of service to probe. default, java, jar, go, eventstore, es"
 		defaultArtifactID  = ""
 		artifactIDUsage    = "artifact to probe health from"
@@ -73,11 +72,7 @@ func main() {
 		log.AddError(err).Fatal("report url has to be a valid url")
 		return
 	}
-	serviceTypeSelected, err := serviceTypeFromString(serviceTypeSelectedString)
-	if err != nil {
-		log.AddError(err).Fatal("service type has to be a valid service type")
-		return
-	}
+	serviceTypeSelected := serviceTypeFromString(serviceTypeSelectedString)
 	endTime := time.Now().Add(duration)
 	t := time.NewTicker(interval)
 	switch serviceTypeSelected {
@@ -95,6 +90,8 @@ func main() {
 			log.AddError(err).Fatal("while getting version of artifact")
 			return
 		}
+	default:
+		version = "unknown"
 	}
 	for endTime.After(time.Now()) {
 		select {
@@ -103,8 +100,12 @@ func main() {
 			switch serviceTypeSelected {
 			case eventstoreST:
 				status, err = EventStoreStatus(healthURL)
+			case javaST:
+				fallthrough
+			case goST:
+				status, err = DefaultServiceStatus(healthURL)
 			default:
-				status, err = DefaultStatus(healthURL)
+				status, err = DefaultWebsiteStatus(healthURL, serviceTypeSelected)
 			}
 			if err != nil {
 				log.AddError(err).Error("while reading status")
@@ -164,10 +165,44 @@ func EventStoreStatus(healthURL *url.URL) (out any, err error) {
 	return
 }
 
-func DefaultStatus(healthURL *url.URL) (out any, err error) {
+func DefaultServiceStatus(healthURL *url.URL) (out any, err error) {
 	err = Get(healthURL, &out)
 	if err != nil {
 		return
+	}
+	return
+}
+
+func DefaultWebsiteStatus(healthURL *url.URL, st serviceType) (out baseStatus, err error) {
+	client := &http.Client{}
+	log.Println("Getting health at: ", healthURL.String())
+	req, err := http.NewRequest("GET", healthURL.String(), nil)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.AddError(err).Error("while closing response body")
+		}
+	}()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	name := strings.TrimPrefix("website_", string(st))
+	status := "DOWN"
+	if strings.Contains(strings.ToLower(string(body)), name) {
+		status = "UP"
+	}
+	out = baseStatus{
+		Status:  status,
+		Name:    name,
+		Version: version,
+		IP:      GetOutboundIP(),
+		Now:     time.Now(),
 	}
 	return
 }
@@ -266,7 +301,7 @@ func GetOutboundIP() net.IP {
 }
 
 const (
-	defaultST    = serviceType("default")
+	//defaultST    = serviceType("default")
 	javaST       = serviceType("java")
 	goST         = serviceType("go")
 	eventstoreST = serviceType("eventstore")
@@ -278,7 +313,7 @@ func (s *serviceType) String() string {
 	return fmt.Sprint(*s)
 }
 
-func serviceTypeFromString(s string) (st serviceType, err error) {
+func serviceTypeFromString(s string) (st serviceType) {
 	switch strings.ToLower(s) {
 	case "java":
 		st = javaST
@@ -293,7 +328,9 @@ func serviceTypeFromString(s string) (st serviceType, err error) {
 	case "es":
 		st = eventstoreST
 	default:
-		err = errors.New("unsuported service type")
+		//err = errors.New("unsuported service type")
+		log.Info("service type not found. treating as website / frontend")
+		st = serviceType(fmt.Sprintf("website_%s", s))
 	}
 	return
 }
