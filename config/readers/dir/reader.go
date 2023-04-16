@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cantara/nerthus2/config/readers/file"
@@ -26,9 +27,12 @@ func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File,
 		if err != nil {
 			return err
 		}
+		mode := strconv.FormatUint(uint64(inf.Mode().Perm()), 8)
+		modType := strconv.FormatUint(uint64(inf.Mode().Type()>>27), 8)
+		mode = modType + mode
 		files = append(files, file.File{
 			Name:    nodeDir + strings.TrimPrefix(path, filesDir),
-			Mode:    inf.Mode().String(),
+			Mode:    mode,
 			Content: string(b),
 		})
 		return nil
