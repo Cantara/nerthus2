@@ -105,6 +105,9 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if config.LoadbalancerGroup == "" {
 		config.LoadbalancerGroup = fmt.Sprintf("%s-sg", config.Loadbalancer)
 	}
+	if config.Zone == "" {
+		config.Zone = strings.ToLower(fmt.Sprintf("%s.%s.infra", config.Name, env.Name))
+	}
 	return
 }
 
