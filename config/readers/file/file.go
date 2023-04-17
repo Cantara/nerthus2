@@ -8,6 +8,7 @@ import (
 type File struct {
 	Name    string `yaml:"name"`
 	Mode    string `yaml:"mode"`
+	Binary  bool   `yaml:"binary"`
 	Content string `yaml:"content"`
 }
 

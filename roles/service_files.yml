@@ -15,7 +15,7 @@ tasks:
         when: dirs is defined
       - name: "Set files"
         copy:
-          content: "{{ item.content | string }}"
+          content: "{{ item.content | b64decode if item.binary else string }}"
           dest: "~/{{ item.name }}"
           mode: "{{ item.mode }}" #0640
         with_items: "{{ files }}"

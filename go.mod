@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.10
 	github.com/cantara/bragi v0.6.7
 	github.com/cantara/gober v0.15.6
+	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/joho/godotenv v1.5.1
@@ -84,10 +85,10 @@ require (
 	golang.org/x/arch v0.1.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
