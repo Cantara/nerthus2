@@ -28,7 +28,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		"os_arch":              serv.OSArch,
 		"instance_type":        serv.InstanceType,
 		"cidr_base":            sys.CIDR,
-		"zone":                 fmt.Sprintf("%s.%s.infra", sys.Name, env.Name),
+		"zone":                 strings.ToLower(fmt.Sprintf("%s.%s.infra", sys.Name, env.Name)),
 		"iam_profile":          serv.IAM,
 		"cluster_name":         serv.ClusterName,
 		"cluster_ports":        serv.Expose,
