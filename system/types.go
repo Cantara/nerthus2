@@ -25,6 +25,7 @@ type Environment struct {
 
 type System struct {
 	Name              string                  `yaml:"name"`
+	FQDN              string                  `yaml:"fqdn"`
 	Vars              Vars                    `yaml:"vars"`
 	Services          []*Service              `yaml:"services"`
 	Scope             string                  `yaml:"scope"`

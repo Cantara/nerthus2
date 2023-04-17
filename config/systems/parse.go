@@ -108,6 +108,9 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if config.Zone == "" {
 		config.Zone = strings.ToLower(fmt.Sprintf("%s.%s.infra", config.Name, env.Name))
 	}
+	if config.FQDN == "" {
+		config.FQDN = env.FQDN
+	}
 	return
 }
 
