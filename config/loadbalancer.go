@@ -34,7 +34,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 		"loadbalancer_name":  sys.Loadbalancer,
 		"loadbalancer_group": sys.LoadbalancerGroup,
 		"cidr_base":          sys.CIDR,
-		"zone":               sys.Zone,
+		//"zone":               sys.Zone,
 	}
 	numberOfFrontendServices := 0
 	var frontendTargetGroups []string

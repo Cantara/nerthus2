@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/cantara/nerthus2/system"
 	"os"
 	"strings"
@@ -27,7 +28,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, serv sys
 		"os_arch":              serv.OSArch,
 		"instance_type":        serv.InstanceType,
 		"cidr_base":            sys.CIDR,
-		"zone":                 sys.Zone,
+		"zone":                 fmt.Sprintf("%s.%s.infra", sys.Name, env.Name),
 		"iam_profile":          serv.IAM,
 		"cluster_name":         serv.ClusterName,
 		"cluster_ports":        serv.Expose,

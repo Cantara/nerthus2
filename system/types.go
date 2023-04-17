@@ -24,22 +24,22 @@ type Environment struct {
 }
 
 type System struct {
-	Name              string                  `yaml:"name"`
-	Vars              Vars                    `yaml:"vars"`
-	Services          []*Service              `yaml:"services"`
-	Scope             string                  `yaml:"scope"`
-	VPC               string                  `yaml:"vpc"`
-	Key               string                  `yaml:"key"`
-	Loadbalancer      string                  `yaml:"loadbalancer"`
-	LoadbalancerGroup string                  `yaml:"loadbalancerGroup"`
-	OSName            string                  `yaml:"os_name"`
-	OSArch            string                  `yaml:"os_arch"`
-	InstanceType      string                  `yaml:"instance_type"`
-	CIDR              string                  `yaml:"cidr_base"`
-	Zone              string                  `yaml:"zone"`
-	Roles             map[string]ansible.Role `yaml:",omitempty"`
-	FS                fs.FS                   `yaml:",omitempty"`
-	Dir               string                  `yaml:",omitempty"`
+	Name              string     `yaml:"name"`
+	Vars              Vars       `yaml:"vars"`
+	Services          []*Service `yaml:"services"`
+	Scope             string     `yaml:"scope"`
+	VPC               string     `yaml:"vpc"`
+	Key               string     `yaml:"key"`
+	Loadbalancer      string     `yaml:"loadbalancer"`
+	LoadbalancerGroup string     `yaml:"loadbalancerGroup"`
+	OSName            string     `yaml:"os_name"`
+	OSArch            string     `yaml:"os_arch"`
+	InstanceType      string     `yaml:"instance_type"`
+	CIDR              string     `yaml:"cidr_base"`
+	//Zone              string                  `yaml:"zone"`
+	Roles map[string]ansible.Role `yaml:",omitempty"`
+	FS    fs.FS                   `yaml:",omitempty"`
+	Dir   string                  `yaml:",omitempty"`
 }
 
 type Vars map[string]any
