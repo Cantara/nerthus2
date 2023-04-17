@@ -96,7 +96,8 @@ func main() {
 		}
 	case mongodbST:
 		healthURL.Scheme = "mongodb"
-		opts := options.Client().ApplyURI(healthURL.String())
+		serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+		opts := options.Client().ApplyURI(healthURL.String()).SetServerAPIOptions(serverAPI)
 		client, err = mongo.Connect(context.Background(), opts)
 		if err != nil {
 			log.AddError(err).Fatal("while connecting to server")
