@@ -329,7 +329,7 @@ func serviceTypeFromString(s string) (st serviceType) {
 		st = eventstoreST
 	default:
 		//err = errors.New("unsuported service type")
-		log.Info("service type not found. treating as website / frontend")
+		log.Info("service type not found. treating as website / frontend") //Could be smart to return to error and use tag website and artifact for name of website
 		st = serviceType(fmt.Sprintf("website_%s", s))
 	}
 	return
