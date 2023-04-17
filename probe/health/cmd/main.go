@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	log "github.com/cantara/bragi"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -75,6 +78,7 @@ func main() {
 	serviceTypeSelected := serviceTypeFromString(serviceTypeSelectedString)
 	endTime := time.Now().Add(duration)
 	t := time.NewTicker(interval)
+	var client *mongo.Client
 	switch serviceTypeSelected {
 	case eventstoreST:
 		version = "22.10"
@@ -88,6 +92,14 @@ func main() {
 		version, err = versionFromLink("")
 		if err != nil {
 			log.AddError(err).Fatal("while getting version of artifact")
+			return
+		}
+	case mongodbST:
+		reportURL.Scheme = "mongodb"
+		opts := options.Client().ApplyURI(reportURL.String())
+		client, err = mongo.Connect(context.Background(), opts)
+		if err != nil {
+			log.AddError(err).Fatal("while connecting to server")
 			return
 		}
 	default:
@@ -104,6 +116,8 @@ func main() {
 				fallthrough
 			case goST:
 				status, err = DefaultServiceStatus(healthURL)
+			case mongodbST:
+				status, err = MongodbStatus(healthURL, client)
 			default:
 				status, err = DefaultWebsiteStatus(healthURL, serviceTypeSelected)
 			}
@@ -305,6 +319,7 @@ const (
 	javaST       = serviceType("java")
 	goST         = serviceType("go")
 	eventstoreST = serviceType("eventstore")
+	mongodbST    = serviceType("mongodb")
 )
 
 type serviceType string
@@ -315,11 +330,11 @@ func (s *serviceType) String() string {
 
 func serviceTypeFromString(s string) (st serviceType) {
 	switch strings.ToLower(s) {
+	case "zip_jar":
+		st = javaST
 	case "java":
 		st = javaST
 	case "jar":
-		st = javaST
-	case "zip_jar":
 		st = javaST
 	case "go":
 		st = goST
@@ -327,6 +342,10 @@ func serviceTypeFromString(s string) (st serviceType) {
 		st = eventstoreST
 	case "es":
 		st = eventstoreST
+	case "mongo":
+		st = mongodbST
+	case "mongodb":
+		st = mongodbST
 	default:
 		//err = errors.New("unsuported service type")
 		log.Info("service type not found. treating as website / frontend") //Could be smart to return to error and use tag website and artifact for name of website
