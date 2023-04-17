@@ -95,8 +95,8 @@ func main() {
 			return
 		}
 	case mongodbST:
-		reportURL.Scheme = "mongodb"
-		opts := options.Client().ApplyURI(reportURL.String())
+		healthURL.Scheme = "mongodb"
+		opts := options.Client().ApplyURI(healthURL.String())
 		client, err = mongo.Connect(context.Background(), opts)
 		if err != nil {
 			log.AddError(err).Fatal("while connecting to server")
