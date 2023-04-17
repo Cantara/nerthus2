@@ -1,11 +1,9 @@
 package dir
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	log "github.com/cantara/bragi/sbragi"
-	"io"
 	"io/fs"
 	"path/filepath"
 	"strconv"
@@ -40,13 +38,28 @@ func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File,
 		isBinary := !strings.HasPrefix(mtype.String(), "text")
 		content := string(b)
 		if isBinary {
-			buf := bytes.Buffer{}
-			encoder := base64.NewEncoder(base64.StdEncoding, &buf)
-			err = WriteAll(encoder, b)
-			if err != nil {
-				return err
-			}
-			content = buf.String()
+			/*
+				buf := bytes.Buffer{}
+				encoder := base64.NewEncoder(base64.StdEncoding, &buf)
+				err = WriteAll(encoder, b)
+				if err != nil {
+					return err
+				}
+				content = buf.String()
+			*/
+			//var b2 []byte
+			content = base64.StdEncoding.EncodeToString(b)
+			/*
+				b2, err := base64.StdEncoding.DecodeString(content)
+					b2 := make([]byte, base64.StdEncoding.DecodedLen(len(content)))
+					_, err = base64.StdEncoding.Decode(b2, []byte(content))
+				if err != nil {
+					log.WithError(err).Fatal("while decoding")
+				}
+				if len(b) != len(b2) {
+					log.Fatal("not same len", "l1", len(b), "l2", len(b2))
+				}
+			*/
 		}
 		files = append(files, file.File{
 			Name:    nodeDir + strings.TrimPrefix(path, filesDir),
@@ -59,6 +72,7 @@ func ReadFilesFromDir(sysFS fs.FS, localDir, nodeDir string) (files []file.File,
 	return
 }
 
+/*
 func WriteAll(w io.Writer, data []byte) (err error) {
 	totalOut := 0
 	var n int
@@ -72,3 +86,4 @@ func WriteAll(w io.Writer, data []byte) (err error) {
 	}
 	return
 }
+*/
