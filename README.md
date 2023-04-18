@@ -1,5 +1,13 @@
 # Nerthus
 
+## Getting started (as user of existing nerthus provisioned environment)
+
+* Log on to https://nerthus.lab.cantara.no using the GitHub authentication method
+* Look at the current installation in the UI
+* To get synced access to nodes
+* * Press the generate&download button to create and downlod the access-sync agent, and install this on the home-directory you want to have synced-access scripts for the nodes
+* 
+
 ## Vars
 
 ### Replacements
