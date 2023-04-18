@@ -7,7 +7,9 @@
 * To get synced access to nodes
   * Press the generate&download button to create and downlod the access-sync agent, and install this on the home-directory you want to have synced-access scripts for the nodes
   * Note:  If someone trigger the "Break the glass"-action, all users will have to log-in and re-create their access-sync agent.
-* 
+* To add a new service 
+
+## Setting up a new nerthus provisioned environment
 
 ## Vars
 
