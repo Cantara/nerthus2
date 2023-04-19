@@ -8,6 +8,7 @@ vars:
   tag: ":latest"
   service_in_docker: true
   eventstore_atom_pub_over_http: false
+  eventstore_projections: "All"
 tasks:
   - set_fact:
       tag: :22.10.1-alpha-arm64v8
@@ -59,3 +60,4 @@ tasks:
         EVENTSTORE_CLUSTER_DNS: "{{ cluster_name }}"
         EVENTSTORE_MAX_APPEND_SIZE: "8388608"
         ENABLE_ATOM_PUB_OVER_HTTP: "{{ eventstore_atom_pub_over_http }}"
+        EVENTSTORE_RUN_PROJECTIONS: "{{ eventstore_projections }}"
