@@ -11,5 +11,9 @@ tasks:
         ansible.builtin.yum:
           name: htop
           state: latest
+      - name: Install jq
+        ansible.builtin.yum:
+          name: jq
+          state: latest
     become: yes
     become_user: root
