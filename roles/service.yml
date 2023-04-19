@@ -5,3 +5,11 @@ dependencies:
   - role: buri
   - role: cron
   - role: service_cron
+tasks:
+  - block:
+      - name: Install htop
+        ansible.builtin.yum:
+          name: htop
+          state: latest
+    become: yes
+    become_user: root
