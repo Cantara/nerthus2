@@ -59,5 +59,6 @@ tasks:
         EVENTSTORE_CLUSTER_SIZE: "3"
         EVENTSTORE_CLUSTER_DNS: "{{ cluster_name }}"
         EVENTSTORE_MAX_APPEND_SIZE: "8388608"
-        ENABLE_ATOM_PUB_OVER_HTTP: "{{ eventstore_atom_pub_over_http }}"
+        EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "{{ eventstore_atom_pub_over_http }}"
         EVENTSTORE_RUN_PROJECTIONS: "{{ eventstore_projections }}"
+        EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
