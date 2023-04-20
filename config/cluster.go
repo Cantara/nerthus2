@@ -7,7 +7,11 @@ import (
 )
 
 func ClusterProvisioningVars(env system.Environment, sys system.System, cluster system.Cluster, bootstrap bool) (vars map[string]any) {
-	vars = map[string]any{
+	vars = map[string]any{}
+	addVars(env.Vars, vars)
+	addVars(sys.Vars, vars)
+	addVars(cluster.Vars, vars)
+	addVars(map[string]any{
 		"region":               os.Getenv("aws.region"),
 		"env":                  env.Name,
 		"nerthus_host":         env.Nerthus,
@@ -32,7 +36,7 @@ func ClusterProvisioningVars(env system.Environment, sys system.System, cluster 
 		"cluster_name":         cluster.ClusterName,
 		"cluster_ports":        cluster.Expose,
 		"cluster_info":         cluster.ClusterInfo,
-	}
+	}, vars)
 	if cluster.HasWebserverPort() {
 		vars["webserver_port"] = cluster.GetWebserverPort()
 	}

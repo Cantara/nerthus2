@@ -5,29 +5,19 @@ import (
 	"github.com/cantara/nerthus2/system"
 )
 
-func GenerateNodePlay(cluster system.Cluster, nodeVars map[string]any) (pb ansible.Playbook) {
+func GenerateNodeProvisioningPlay(cluster system.Cluster, nodeVars map[string]any) (pb ansible.Playbook) {
 	pb = ansible.Playbook{
 		Name:       cluster.Name,
 		Hosts:      "localhost",
 		Connection: "local",
 		Vars:       map[string]any{},
 	}
-	overrides := make([]string, len(cluster.Override))
-	oi := 0
-	for k := range cluster.Override {
-		overrides[oi] = k
-		oi++
-	}
-	/*
-		for _, dep := range cluster.ServiceInfo.Dependencies {
-			if arrayContains(overrides, dep) {
-				continue
-			}
-			addTask(dep, &pb, &done, serv.Roles)
-		}
-	*/
 	var done []string
-	addTask("cron", &pb, &done, cluster.Roles)
+	for _, dep := range []string{
+		"cron",
+	} {
+		addTask(dep, &pb, &done, cluster.Roles)
+	}
 	addVars(nodeVars, pb.Vars)
 	return
 }

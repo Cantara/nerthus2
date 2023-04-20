@@ -3,7 +3,6 @@ dependencies:
   - role: utf8
   - role: user
   - role: buri
-  - role: cron
   - role: service_cron
 tasks:
   - block:

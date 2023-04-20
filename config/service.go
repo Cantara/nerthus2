@@ -104,3 +104,12 @@ func ServiceNodeVars(cluster system.Cluster, nodeNum int, vars map[string]any) (
 	outVars["server_number"] = strconv.Itoa(nodeNum)
 	return
 }
+
+func NodeProvisioningVars(cluster system.Cluster, nodeNum int, vars map[string]any) (outVars map[string]any) {
+	outVars = map[string]any{}
+	addVars(vars, outVars)
+	outVars["hostname"] = cluster.NodeNames[nodeNum]
+	outVars["server_number"] = strconv.Itoa(nodeNum)
+	outVars["service"] = "ec2-user"
+	return
+}

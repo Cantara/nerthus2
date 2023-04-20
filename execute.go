@@ -5,9 +5,11 @@ import (
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/executors"
+	"github.com/cantara/nerthus2/executors/ansible/executor"
 	"github.com/cantara/nerthus2/executors/ansible/generators"
 	"github.com/cantara/nerthus2/message"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -60,15 +62,27 @@ func ExecuteEnv(env string) {
 						Data:   serviceProvisioningPlayYaml,
 					}
 				}
+			}
 
-				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
-				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
-				for status := range retChan {
-					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
+			for nodeNum, nodeName := range cluster.NodeNames {
+				nodeProvisioningVars := config.NodeProvisioningVars(*cluster, nodeNum, clusterVars)
+				nodeProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateNodeProvisioningPlay(*cluster, nodeProvisioningVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
+				}
+				err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeProvisioningPlayYaml, false)
+				if err != nil {
+					log.WithError(err).Error("while trying to write playbook yaml")
+					continue
 				}
 			}
+			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+			for status := range retChan {
+				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			}
 		}
-
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
 		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
@@ -116,12 +130,25 @@ func ExecuteSys(env, sys string) {
 						Data:   serviceProvisioningPlayYaml,
 					}
 				}
+			}
 
-				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
-				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
-				for status := range retChan {
-					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
+			for nodeNum, nodeName := range cluster.NodeNames {
+				nodeProvisioningVars := config.NodeProvisioningVars(*cluster, nodeNum, clusterVars)
+				nodeProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateNodeProvisioningPlay(*cluster, nodeProvisioningVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
 				}
+				err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeProvisioningPlayYaml, false)
+				if err != nil {
+					log.WithError(err).Error("while trying to write playbook yaml")
+					continue
+				}
+			}
+			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+			for status := range retChan {
+				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
@@ -132,7 +159,7 @@ func ExecuteSys(env, sys string) {
 	}
 }
 
-func ExecuteClust(env, sys, cluster string) {
+func ExecuteCluster(env, sys, cluster string) {
 	if bootstrap {
 		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", cluster)
 		//Might want to allow this
@@ -170,12 +197,25 @@ func ExecuteClust(env, sys, cluster string) {
 						Data:   serviceProvisioningPlayYaml,
 					}
 				}
+			}
 
-				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *clusterConf, bootstrap)
-				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
-				for status := range retChan {
-					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+			clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *clusterConf, bootstrap)
+			for nodeNum, nodeName := range clusterConf.NodeNames {
+				nodeProvisioningVars := config.NodeProvisioningVars(*clusterConf, nodeNum, clusterVars)
+				nodeProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateNodeProvisioningPlay(*clusterConf, nodeProvisioningVars))
+				if err != nil {
+					log.WithError(err).Error("while trying to create playbook yaml")
+					continue
 				}
+				err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeProvisioningPlayYaml, false)
+				if err != nil {
+					log.WithError(err).Error("while trying to write playbook yaml")
+					continue
+				}
+			}
+			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+			for status := range retChan {
+				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)

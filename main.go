@@ -153,7 +153,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
-		ExecuteClust(env, sys, cluster)
+		ExecuteCluster(env, sys, cluster)
 	})
 
 	serv.API.PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
