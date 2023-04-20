@@ -36,6 +36,12 @@ func TestReadFullEnv(t *testing.T) {
 			if len(cluster.Roles) == 0 {
 				t.Fatal("cluster roles missing")
 			}
+			if cluster.Name == "nerthus" {
+				clusterVars := ClusterProvisioningVars(envConf, system, *cluster, false)
+				if clusterVars["is_frontend"] != true {
+					t.Fatal("nerthus cluster is not frontend for provisioning")
+				}
+			}
 			for _, service := range cluster.Services {
 				log.Println("verifying", "env", envConf.Name, "system", system.Name, "cluster", cluster.Name, "service", service.Name)
 				if service.ServiceInfo == nil {
@@ -50,9 +56,6 @@ func TestReadFullEnv(t *testing.T) {
 				if service.Name == "nerthus" {
 					if !service.ServiceInfo.Requirements.IsFrontend {
 						t.Fatal("nerthus is not frontend")
-					}
-					if servicePlay.Vars["is_frontend"] != true {
-						t.Fatal("nerthus service play var is_frontend is not true")
 					}
 				}
 				if cluster.Name == "visuale" {

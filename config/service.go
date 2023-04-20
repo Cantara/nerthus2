@@ -88,7 +88,6 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, cluster 
 	vars["artifact_user"] = serv.ServiceInfo.Artifact.User
 	vars["artifact_password"] = serv.ServiceInfo.Artifact.Password
 	vars["service_type"] = serv.ServiceInfo.ServiceType
-	vars["is_frontend"] = serv.ServiceInfo.Requirements.IsFrontend
 
 	if strings.ToLower(os.Getenv("allowAllRegions")) == "true" {
 		if r, ok := sys.Vars["region"]; ok && r != "" {

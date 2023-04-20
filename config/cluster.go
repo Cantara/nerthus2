@@ -26,7 +26,7 @@ func ClusterProvisioningVars(env system.Environment, sys system.System, cluster 
 		"loadbalancer_group":   sys.LoadbalancerGroup,
 		"security_group_name":  cluster.SecurityGroup,
 		"security_group_rules": cluster.SecurityGroupRules,
-		"is_frontend":          cluster.IsClusterAble(),
+		"is_frontend":          cluster.HasFrontend(),
 		"os_name":              cluster.OSName,
 		"os_arch":              cluster.OSArch,
 		"instance_type":        cluster.InstanceType,
