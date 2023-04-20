@@ -161,7 +161,7 @@ func clusterBase(env system.Environment, sys system.System, cluster *system.Clus
 		cluster.Roles[k] = v
 	}
 	for i := range cluster.Services {
-		err = Service(env, sys, cluster.Services[i])
+		err = Service(env, sys, *cluster, cluster.Services[i])
 		if err != nil {
 			return
 		}
@@ -207,7 +207,10 @@ func clusterBase(env system.Environment, sys system.System, cluster *system.Clus
 	return
 }
 
-func Service(env system.Environment, sys system.System, serv *system.Service) (err error) {
+func Service(env system.Environment, sys system.System, cluster system.Cluster, serv *system.Service) (err error) {
+	if serv.Name == "" {
+		serv.Name = cluster.Name
+	}
 	if serv.Local != "" {
 		serv.ServiceInfo, err = LocalService(serv, env.FS, sys.FS)
 		if err != nil {

@@ -24,6 +24,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, cluster 
 		"visuale_host":        env.Visuale,
 		"system":              sys.Name,
 		"cluster":             cluster.Name,
+		"service":             serv.Name,
 		"name_base":           sys.Scope,
 		"vpc_name":            sys.VPC,
 		"key_name":            sys.Key,
