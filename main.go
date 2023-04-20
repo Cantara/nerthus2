@@ -148,12 +148,12 @@ func main() {
 			return
 		}
 		sys := c.Params.ByName("sys")
-		clust := c.Params.ByName("cluster")
+		cluster := c.Params.ByName("cluster")
 		_, err := GitCloneEnvironment(env, environments)
 		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "service", serv)
+			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
-		ExecuteClust(env, sys, clust)
+		ExecuteClust(env, sys, cluster)
 	})
 
 	serv.API.PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
@@ -164,13 +164,13 @@ func main() {
 			return
 		}
 		sys := c.Params.ByName("sys")
-		clust := c.Params.ByName("cluster")
-		serv := c.Params.ByName("serv")
+		cluster := c.Params.ByName("cluster")
+		service := c.Params.ByName("serv")
 		_, err := GitCloneEnvironment(env, environments)
 		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "service", serv)
+			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster, "service", service)
 		}
-		ExecuteServ(env, sys, clust, serv)
+		ExecuteServ(env, sys, cluster, service)
 	})
 
 	keyStream, err := ondisk.Init("pubKeys", ctx)
