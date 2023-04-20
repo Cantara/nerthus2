@@ -13,7 +13,7 @@ type BootstrapVars struct {
 	EnvName  string
 }
 
-func Calculate(serv system.Service, bootstrap *BootstrapVars) (propertiesName, properties string, err error) {
+func Calculate(serv system.Service) (propertiesName, properties string, err error) {
 	if serv.Properties != nil {
 		properties = *serv.Properties
 	}
@@ -39,9 +39,11 @@ func Calculate(serv system.Service, bootstrap *BootstrapVars) (propertiesName, p
 			properties = fmt.Sprintf("%s=%d\n%s", serv.ServiceInfo.Requirements.WebserverPortKey, *serv.WebserverPort, properties)
 		}
 	}
-	if bootstrap != nil {
-		properties = fmt.Sprintf("%s=%s\n%s=%s\n%s=%s\n%s", "git.token", bootstrap.GitToken, "git.repo", bootstrap.GitRepo, "boot_env", bootstrap.EnvName, properties)
-	}
+	/*
+		if bootstrap != nil {
+			properties = fmt.Sprintf("%s=%s\n%s=%s\n%s=%s\n%s", "git.token", bootstrap.GitToken, "git.repo", bootstrap.GitRepo, "boot_env", bootstrap.EnvName, properties)
+		}
+	*/
 	propertiesName = serv.ServiceInfo.Requirements.PropertiesName
 	return
 }

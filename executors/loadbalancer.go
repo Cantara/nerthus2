@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func ExecuteLoadbalancer(dir string, vars map[string]any, ctx context.Context) (resultChan <-chan ansibleExecutor.TaskResult) {
+func ExecuteLoadbalancerProvisioning(dir string, vars map[string]any, ctx context.Context) (resultChan <-chan ansibleExecutor.TaskResult) {
 	return ansibleExecutor.Execute(FindPlayPath(dir, "loadbalancer.yml"), vars, ctx)
 }
 

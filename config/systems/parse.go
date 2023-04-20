@@ -54,6 +54,12 @@ func Environment(env string, builtinRoles map[string]ansible.Role) (config syste
 	if err != nil {
 		return
 	}
+	if config.Nerthus == "" {
+		config.Nerthus = fmt.Sprintf("nerthus.%s", config.Domain)
+	}
+	if config.Visuale == "" {
+		config.Visuale = fmt.Sprintf("visuale.%s", config.Domain)
+	}
 	return
 }
 
@@ -85,10 +91,10 @@ func System(env system.Environment, systemDir string) (config system.System, err
 		return
 	}
 	if config.Name == "" {
-		if len(config.Services) > 1 {
+		if len(config.Clusters) > 1 {
 			log.Fatal("No system name and more than one service in the system")
 		}
-		config.Name = config.Services[0].Name
+		config.Name = config.Clusters[0].Name
 	}
 	if config.Scope == "" {
 		config.Scope = fmt.Sprintf("%s-%s", env.Name, config.Name)
@@ -99,6 +105,9 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if config.Key == "" {
 		config.Key = fmt.Sprintf("%s-key", config.Scope)
 	}
+	if config.RoutingMethod == "" {
+		config.RoutingMethod = system.RoutingPath
+	}
 	if config.Loadbalancer == "" {
 		config.Loadbalancer = fmt.Sprintf("%s-lb", config.Scope)
 	}
@@ -108,43 +117,85 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if config.Zone == "" {
 		config.Zone = strings.ToLower(fmt.Sprintf("%s.%s.infra", config.Name, env.Name))
 	}
-	if config.FQDN == "" {
-		config.FQDN = env.FQDN
+	if config.Domain == "" {
+		config.Domain = env.Domain
 	}
 	return
 }
 
-func serviceBase(sys system.System, serv *system.Service) (err error) {
-	if serv.Generated == true {
+func clusterBase(sys system.System, clust *system.Cluster) (err error) {
+	if clust.Generated == true {
 		return
 	}
 	var extra string
-	if sys.Name != serv.Name {
-		extra = fmt.Sprintf("-%s", serv.Name)
+	if sys.Name != clust.Name {
+		extra = fmt.Sprintf("-%s", clust.Name)
 	}
-	if serv.OSName == "" {
-		serv.OSName = sys.OSName
+	if clust.OSName == "" {
+		clust.OSName = sys.OSName
 	}
-	if serv.OSArch == "" {
-		serv.OSArch = sys.OSArch
+	if clust.OSArch == "" {
+		clust.OSArch = sys.OSArch
 	}
-	if serv.InstanceType == "" {
-		serv.InstanceType = sys.InstanceType
+	if clust.InstanceType == "" {
+		clust.InstanceType = sys.InstanceType
 	}
-	if serv.SecurityGroup == "" {
-		serv.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
+	if clust.SecurityGroup == "" {
+		clust.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
 	}
-	if serv.TargetGroup == "" && serv.WebserverPort != nil {
-		serv.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
+	if clust.TargetGroup == "" && clust.HasWebserverPort() {
+		clust.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
 	}
-	if serv.ClusterName == "" {
-		serv.ClusterName = fmt.Sprintf("%s.%s", serv.Name, sys.Zone)
+	if clust.ClusterName == "" {
+		clust.ClusterName = fmt.Sprintf("%s.%s", clust.Name, sys.Zone)
 	}
-	serv.ClusterInfo = map[string]system.ClusterInfo{}
-	serv.Roles = map[string]ansible.Role{}
+	clust.ClusterInfo = map[string]system.ClusterInfo{}
+	clust.Roles = map[string]ansible.Role{}
 	for k, v := range sys.Roles {
-		serv.Roles[k] = v
+		clust.Roles[k] = v
 	}
+	if clust.NumberOfNodes == 0 {
+		if clust.IsClusterAble() {
+			clust.NumberOfNodes = 3
+		} else {
+			clust.NumberOfNodes = 1
+		}
+	}
+	if len(clust.NodeNames) == 0 {
+		if clust.NumberOfNodes == 1 {
+			clust.NodeNames = []string{
+				fmt.Sprintf("%s%s", sys.Scope, extra),
+			}
+		} else {
+			clust.NodeNames = make([]string, clust.NumberOfNodes)
+			for num := 1; num <= clust.NumberOfNodes; num++ {
+				clust.NodeNames[num-1] = fmt.Sprintf("%s%s-%d", sys.Scope, extra, num)
+			}
+		}
+	}
+	if len(clust.NodeNames) != clust.NumberOfNodes {
+		err = ErrMissMatchNumberOfNamesAndProvidedNames
+		log.WithError(err).Error("while creating service config", "numberOfNodes", clust.NumberOfNodes, "nodeNames", clust.NodeNames)
+		return
+	}
+
+	for _, serv := range clust.Services {
+		if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
+			clust.SecurityGroupRules = []ansible.SecurityGroupRule{
+				{
+					Proto:    "tcp",
+					FromPort: strconv.Itoa(*serv.WebserverPort),
+					ToPort:   strconv.Itoa(*serv.WebserverPort),
+					Group:    sys.LoadbalancerGroup,
+				},
+			}
+		}
+	}
+	clust.Generated = true
+	return
+}
+
+func Service(sys system.System, serv *system.Service) (err error) {
 	if serv.Local != "" {
 		serv.ServiceInfo, err = LocalService(sys.Dir, serv)
 		if err != nil {
@@ -159,78 +210,42 @@ func serviceBase(sys system.System, serv *system.Service) (err error) {
 	if serv.ServiceInfo.Artifact.Id == "" {
 		serv.ServiceInfo.Artifact.Id = serv.Name
 	}
-	if serv.Properties != nil && !arrayContains(serv.ServiceInfo.Dependencies, "local_override") {
-		serv.ServiceInfo.Dependencies = append(serv.ServiceInfo.Dependencies, "local_override")
+	if serv.Properties != nil && !arrayContains(serv.ServiceInfo.Requirements.Roles, "local_override") {
+		serv.ServiceInfo.Requirements.Roles = append(serv.ServiceInfo.Requirements.Roles, "local_override")
 	}
-	if serv.Files != nil && !arrayContains(serv.ServiceInfo.Dependencies, "service_files") {
-		serv.ServiceInfo.Dependencies = append(serv.ServiceInfo.Dependencies, "service_files")
+	if serv.Files != nil && !arrayContains(serv.ServiceInfo.Requirements.Roles, "service_files") {
+		serv.ServiceInfo.Requirements.Roles = append(serv.ServiceInfo.Requirements.Roles, "service_files")
 	}
-	if serv.NumberOfNodes == 0 {
-		if serv.ServiceInfo.Requirements.NotClusterAble {
-			serv.NumberOfNodes = 1
-		} else {
-			serv.NumberOfNodes = 3
-		}
-	}
-	if len(serv.NodeNames) == 0 {
-		if serv.NumberOfNodes == 1 {
-			serv.NodeNames = []string{
-				fmt.Sprintf("%s%s", sys.Scope, extra),
-			}
-		} else {
-			serv.NodeNames = make([]string, serv.NumberOfNodes)
-			for num := 1; num <= serv.NumberOfNodes; num++ {
-				serv.NodeNames[num-1] = fmt.Sprintf("%s%s-%d", sys.Scope, extra, num)
-			}
-		}
-	}
-	if len(serv.NodeNames) != serv.NumberOfNodes {
-		err = ErrMissMatchNumberOfNamesAndProvidedNames
-		log.WithError(err).Error("while creating service config", "numberOfNodes", serv.NumberOfNodes, "nodeNames", serv.NodeNames)
-		return
-	}
-
-	if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
-		serv.SecurityGroupRules = []ansible.SecurityGroupRule{
-			{
-				Proto:    "tcp",
-				FromPort: strconv.Itoa(*serv.WebserverPort),
-				ToPort:   strconv.Itoa(*serv.WebserverPort),
-				Group:    sys.LoadbalancerGroup,
-			},
-		}
-	}
-	serv.Generated = true
 	return
 }
 
-func Service(sys system.System, serv *system.Service) (err error) {
-	if !serv.Generated {
-		err = serviceBase(sys, serv)
+func Cluster(sys system.System, clust *system.Cluster) (err error) {
+	if !clust.Generated {
+		err = clusterBase(sys, clust)
 		if err != nil {
 			return
 		}
 	}
 
-	for _, fromServ := range sys.Services {
+	for _, fromServ := range sys.Clusters {
 		for from, to := range fromServ.Override {
-			if serv.Name != to {
+			if clust.Name != to {
 				continue
 			}
-			if len(serv.Expose) == 0 {
+			if len(clust.Expose) == 0 {
 				err = ErrOverrideDoesNotExportAnyPorts
 				log.WithError(err).Error("while setting override security group rules", "from", from, "to", to)
 				return
 			}
 			if !fromServ.Generated {
-				err = serviceBase(sys, fromServ)
+				err = clusterBase(sys, fromServ)
 				if err != nil {
 					return
 				}
 			}
-			sgrs := make([]ansible.SecurityGroupRule, len(serv.Expose))
+			sgrs := make([]ansible.SecurityGroupRule, len(clust.Expose))
 			i := 0
-			for _, v := range serv.Expose {
+			for _, v := range clust.Expose {
 				sgrs[i] = ansible.SecurityGroupRule{
 					Proto:    "tcp",
 					FromPort: strconv.Itoa(v),
@@ -239,10 +254,10 @@ func Service(sys system.System, serv *system.Service) (err error) {
 				}
 				i++
 			}
-			serv.SecurityGroupRules = append(serv.SecurityGroupRules, sgrs...)
-			fromServ.ClusterInfo[serv.Name] = system.ClusterInfo{
-				Name:  serv.ClusterName,
-				Ports: serv.Expose,
+			clust.SecurityGroupRules = append(clust.SecurityGroupRules, sgrs...)
+			fromServ.ClusterInfo[clust.Name] = system.ClusterInfo{
+				Name:  clust.ClusterName,
+				Ports: clust.Expose,
 			}
 		}
 	}

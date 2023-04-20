@@ -30,7 +30,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 		"name_base":          sys.Scope,
 		"vpc_name":           sys.VPC,
 		"key_name":           sys.Key,
-		"fqdn":               sys.FQDN,
+		"fqdn":               fmt.Sprintf("*.%s", sys.Domain),
 		"loadbalancer_name":  sys.Loadbalancer,
 		"loadbalancer_group": sys.LoadbalancerGroup,
 		"cidr_base":          sys.CIDR,
@@ -38,12 +38,15 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 	}
 	numberOfFrontendServices := 0
 	var frontendTargetGroups []string
-	for _, serv := range sys.Services {
-		if !serv.ServiceInfo.Requirements.IsFrontend {
-			continue
+	for _, clust := range sys.Clusters { // This whole thing seems weird
+		for _, serv := range clust.Services {
+			if !serv.ServiceInfo.Requirements.IsFrontend {
+				continue
+			}
+			numberOfFrontendServices++
+			frontendTargetGroups = append(frontendTargetGroups, clust.TargetGroup)
+			break // This logic is forcing max one frontend per cluster. This seems like a weird solution
 		}
-		numberOfFrontendServices++
-		frontendTargetGroups = append(frontendTargetGroups, serv.TargetGroup)
 	}
 	if numberOfFrontendServices == 1 {
 		vars["default_actions"] = []Action{
@@ -56,33 +59,43 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 
 	i := 0
 	rules := []Rule{}
-	for _, serv := range sys.Services {
-		if serv.Playbook != "" {
+	for _, clust := range sys.Clusters {
+		if clust.Playbook != "" {
 			continue
 		}
-		if serv.ServiceInfo.Requirements.IsFrontend {
+		if clust.HasFrontend() { //TODO: This should also add a part about Routing method
 			continue
 		}
-		if serv.WebserverPort == nil {
+		if !clust.HasWebserverPort() {
 			continue
 		}
-		if serv.TargetGroup == "" {
+		if clust.TargetGroup == "" { //This seems redundant
 			continue
 		}
 		i++
-		rules = append(rules, Rule{
-			Conditions: []Condition{
-				{
-					Field: "path-pattern",
-					Values: []string{
-						fmt.Sprintf("/%s", serv.Name),
-						fmt.Sprintf("/%s/*", serv.Name),
-					},
+		var cond Condition
+		switch sys.RoutingMethod {
+		case system.RoutingPath:
+			cond = Condition{
+				Field: "path-pattern",
+				Values: []string{
+					fmt.Sprintf("/%s", clust.Name),
+					fmt.Sprintf("/%s/*", clust.Name),
 				},
-			},
+			}
+		case system.RoutingHost:
+			cond = Condition{
+				Field: "host-header",
+				Values: []string{
+					fmt.Sprintf("%s-%s.%s", clust.Name, sys.Name, env.Domain),
+				},
+			}
+		}
+		rules = append(rules, Rule{
+			Conditions: []Condition{cond},
 			Actions: []Action{
 				{
-					TargetGroupName: serv.TargetGroup,
+					TargetGroupName: clust.TargetGroup,
 					Type:            "forward",
 				},
 			},

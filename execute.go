@@ -4,14 +4,11 @@ import (
 	"context"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config"
-	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/config/systems"
 	"github.com/cantara/nerthus2/executors"
-	"github.com/cantara/nerthus2/executors/ansible/executor"
 	"github.com/cantara/nerthus2/executors/ansible/generators"
 	"github.com/cantara/nerthus2/message"
 	"github.com/cantara/nerthus2/system"
-	"path/filepath"
 	"strings"
 )
 
@@ -31,16 +28,18 @@ func ReadFullEnvConfig(env string) (envConf system.Environment, err error) {
 			continue
 		}
 		envConf.SystemConfigs[systemName] = systemConf
-		for _, service := range systemConf.Services {
-			err = systems.Service(systemConf, service)
+		for _, cluster := range systemConf.Clusters {
+			err = systems.Cluster(systemConf, cluster)
 			if err != nil {
 				log.WithError(err).Error("while getting service config")
 				continue
 			}
-			if bootstrap && strings.ToLower(service.ServiceInfo.Name) != "nerthus" {
+			/* FIXME? Missing logic for bootstrapping
+			if bootstrap && strings.ToLower(cluster.ServiceInfo.Name) != "nerthus" {
 				//log.Info("skipping service while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "service", service.Name)
 				continue
 			}
+			*/
 			//log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
 
 		}
@@ -48,11 +47,7 @@ func ReadFullEnvConfig(env string) (envConf system.Environment, err error) {
 	return
 }
 
-func ExecuteEnv(env string) {
-	envConf, err := ReadFullEnvConfig(env)
-	if err != nil {
-		log.WithError(err).Fatal("while reading env config")
-	}
+/*
 	var bootstrapVars *properties.BootstrapVars
 	if bootstrap {
 		bootstrapVars = &properties.BootstrapVars{
@@ -61,34 +56,34 @@ func ExecuteEnv(env string) {
 			EnvName:  bootstrapEnv,
 		}
 	}
+*/
+
+func ExecuteEnv(env string) {
+	envConf, err := ReadFullEnvConfig(env)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env config")
+	}
 	for _, systemConf := range envConf.SystemConfigs {
 		if bootstrap && strings.ToLower(systemConf.Name) != "nerthus" {
 			log.Info("skipping systemConf while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name)
 			continue
 		}
-		for _, service := range systemConf.Services {
-			if bootstrap && strings.ToLower(service.ServiceInfo.Name) != "nerthus" {
-				log.Info("skipping service while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "service", service.Name)
+		for _, cluster := range systemConf.Clusters {
+			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
+				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
 				continue
 			}
-			log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
+			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
-			serviceProvisioningVars := config.ServiceProvisioningVars(envConf, systemConf, *service, bootstrap)
-			for nodeNum, nodeName := range service.NodeNames {
-				nodeBootstrapVars := config.NodeBootstrapVars(envConf, systemConf, *service, nodeNum, serviceProvisioningVars, bootstrapVars)
-				nodeBootstrapPlayYaml, err := generators.PlayToYaml(generators.GenerateNodePlay(*service, nodeBootstrapVars))
-				if err != nil {
-					log.WithError(err).Error("while trying to create playbook yaml")
-					continue
-				}
-
-				if bootstrap {
-					err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeBootstrapPlayYaml, bootstrap)
+			for _, service := range cluster.Services {
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				for nodeNum, nodeName := range cluster.NodeNames {
+					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
 					if err != nil {
-						log.WithError(err).Error("while trying to write playbook yaml")
+						log.WithError(err).Error("while trying to create playbook yaml")
 						continue
 					}
-				} else {
 					ha, ok := hostActions.Get(nodeName)
 					if !ok {
 						ha = make(chan message.Action, 10)
@@ -96,31 +91,20 @@ func ExecuteEnv(env string) {
 					}
 					ha <- message.Action{
 						Action: message.Playbook,
-						Data:   nodeBootstrapPlayYaml,
+						Data:   serviceProvisioningPlayYaml,
 					}
 				}
 
-				nodeProvisioningVars := config.NodeProvisioningVars(*service, nodeNum, serviceProvisioningVars)
-				serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServiceProvisioningPlay(*service, nodeProvisioningVars))
-				if err != nil {
-					log.WithError(err).Error("while trying to create playbook yaml")
-					continue
+				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
+				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+				for status := range retChan {
+					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 				}
-				err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, serviceProvisioningPlayYaml, false)
-				if err != nil {
-					log.WithError(err).Error("while trying to write playbook yaml")
-					continue
-				}
-			}
-
-			retChan := executors.ExecuteService(envConf.Dir, serviceProvisioningVars, context.Background())
-			for status := range retChan {
-				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
-		retChan := executors.ExecuteLoadbalancer(envConf.Dir, systemLoadbalancerVars, context.Background())
+		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
 			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 		}
@@ -140,25 +124,22 @@ func ExecuteSys(env, sys string) {
 		if strings.ToLower(systemConf.Name) != sys {
 			continue
 		}
-		for _, service := range systemConf.Services {
-			log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
+		for _, cluster := range systemConf.Clusters {
+			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
+				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
+				continue
+			}
+			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
-			serviceProvisioningVars := config.ServiceProvisioningVars(envConf, systemConf, *service, bootstrap)
-			for nodeNum, nodeName := range service.NodeNames {
-				nodeBootstrapVars := config.NodeBootstrapVars(envConf, systemConf, *service, nodeNum, serviceProvisioningVars, nil)
-				nodeBootstrapPlayYaml, err := generators.PlayToYaml(generators.GenerateNodePlay(*service, nodeBootstrapVars))
-				if err != nil {
-					log.WithError(err).Error("while trying to create playbook yaml")
-					continue
-				}
-
-				if bootstrap {
-					err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, nodeBootstrapPlayYaml, bootstrap)
+			for _, service := range cluster.Services {
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				for nodeNum, nodeName := range cluster.NodeNames {
+					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
 					if err != nil {
-						log.WithError(err).Error("while trying to write playbook yaml")
+						log.WithError(err).Error("while trying to create playbook yaml")
 						continue
 					}
-				} else {
 					ha, ok := hostActions.Get(nodeName)
 					if !ok {
 						ha = make(chan message.Action, 10)
@@ -166,40 +147,28 @@ func ExecuteSys(env, sys string) {
 					}
 					ha <- message.Action{
 						Action: message.Playbook,
-						Data:   nodeBootstrapPlayYaml,
+						Data:   serviceProvisioningPlayYaml,
 					}
 				}
 
-				nodeProvisioningVars := config.NodeProvisioningVars(*service, nodeNum, serviceProvisioningVars)
-				serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServiceProvisioningPlay(*service, nodeProvisioningVars))
-				if err != nil {
-					log.WithError(err).Error("while trying to create playbook yaml")
-					continue
+				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
+				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+				for status := range retChan {
+					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 				}
-				err = executor.WriteNodePlay(filepath.Clean(envConf.Dir+"/ansible/nodes"), nodeName, serviceProvisioningPlayYaml, false)
-				if err != nil {
-					log.WithError(err).Error("while trying to write playbook yaml")
-					continue
-				}
-			}
-
-			retChan := executors.ExecuteService(envConf.Dir, serviceProvisioningVars, context.Background())
-			for status := range retChan {
-				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
-
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
-		retChan := executors.ExecuteLoadbalancer(envConf.Dir, systemLoadbalancerVars, context.Background())
+		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
 			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 		}
 	}
 }
 
-func ExecuteServ(env, sys, serv string) {
+func ExecuteClust(env, sys, clust string) {
 	if bootstrap {
-		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "service", serv)
+		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", clust)
 		//Might want to allow this
 	}
 	envConf, err := ReadFullEnvConfig(env)
@@ -210,29 +179,87 @@ func ExecuteServ(env, sys, serv string) {
 		if strings.ToLower(systemConf.Name) != sys {
 			continue
 		}
-		for _, service := range systemConf.Services {
-			if strings.ToLower(service.Name) != serv {
+		for _, cluster := range systemConf.Clusters {
+			if strings.ToLower(cluster.Name) != clust {
 				continue
 			}
-			log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
+			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
-			serviceProvisioningVars := config.ServiceProvisioningVars(envConf, systemConf, *service, bootstrap)
-			for nodeNum, nodeName := range service.NodeNames {
-				nodeBootstrapVars := config.NodeBootstrapVars(envConf, systemConf, *service, nodeNum, serviceProvisioningVars, nil)
-				nodeBootstrapPlayYaml, err := generators.PlayToYaml(generators.GenerateNodePlay(*service, nodeBootstrapVars))
-				if err != nil {
-					log.WithError(err).Error("while trying to create playbook yaml")
+			for _, service := range cluster.Services {
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				for nodeNum, nodeName := range cluster.NodeNames {
+					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
+					if err != nil {
+						log.WithError(err).Error("while trying to create playbook yaml")
+						continue
+					}
+					ha, ok := hostActions.Get(nodeName)
+					if !ok {
+						ha = make(chan message.Action, 10)
+						hostActions.Set(nodeName, ha)
+					}
+					ha <- message.Action{
+						Action: message.Playbook,
+						Data:   serviceProvisioningPlayYaml,
+					}
+				}
+
+				clusterVars := config.ClusterProvisioningVars(envConf, systemConf, *cluster, bootstrap)
+				retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
+				for status := range retChan {
+					log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+				}
+			}
+		}
+		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
+		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
+		for status := range retChan {
+			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
+		}
+	}
+}
+
+func ExecuteServ(env, sys, clust, serv string) {
+	if bootstrap {
+		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", clust, "service", serv)
+		//Might want to allow this
+	}
+	envConf, err := ReadFullEnvConfig(env)
+	if err != nil {
+		log.WithError(err).Fatal("while reading env config")
+	}
+	for _, systemConf := range envConf.SystemConfigs {
+		if strings.ToLower(systemConf.Name) != sys {
+			continue
+		}
+		for _, cluster := range systemConf.Clusters {
+			if strings.ToLower(cluster.Name) != clust {
+				continue
+			}
+			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
+
+			for _, service := range cluster.Services {
+				if strings.ToLower(service.Name) != serv {
 					continue
 				}
-
-				ha, ok := hostActions.Get(nodeName)
-				if !ok {
-					ha = make(chan message.Action, 10)
-					hostActions.Set(nodeName, ha)
-				}
-				ha <- message.Action{
-					Action: message.Playbook,
-					Data:   nodeBootstrapPlayYaml,
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				for nodeNum, nodeName := range cluster.NodeNames {
+					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
+					if err != nil {
+						log.WithError(err).Error("while trying to create playbook yaml")
+						continue
+					}
+					ha, ok := hostActions.Get(nodeName)
+					if !ok {
+						ha = make(chan message.Action, 10)
+						hostActions.Set(nodeName, ha)
+					}
+					ha <- message.Action{
+						Action: message.Playbook,
+						Data:   serviceProvisioningPlayYaml,
+					}
 				}
 			}
 		}

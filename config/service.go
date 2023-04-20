@@ -1,54 +1,92 @@
 package config
 
 import (
+	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/nerthus2/config/properties"
+	"github.com/cantara/nerthus2/config/readers/dir"
+	"github.com/cantara/nerthus2/config/readers/file"
 	"github.com/cantara/nerthus2/system"
 	"os"
+	"strconv"
 	"strings"
 )
 
-func ServiceProvisioningVars(env system.Environment, sys system.System, serv system.Service, bootstrap bool) (vars map[string]any) {
-	vars = map[string]any{
-		"region":               os.Getenv("aws.region"),
-		"env":                  env.Name,
-		"nerthus_host":         env.Nerthus,
-		"visuale_host":         env.Visuale,
-		"system":               sys.Name,
-		"service":              serv.Name,
-		"name_base":            sys.Scope,
-		"vpc_name":             sys.VPC,
-		"key_name":             sys.Key,
-		"node_names":           serv.NodeNames,
-		"loadbalancer_name":    sys.Loadbalancer,
-		"loadbalancer_group":   sys.LoadbalancerGroup,
-		"security_group_name":  serv.SecurityGroup,
-		"security_group_rules": serv.SecurityGroupRules,
-		"is_frontend":          serv.ServiceInfo.Requirements.IsFrontend,
-		"os_name":              serv.OSName,
-		"os_arch":              serv.OSArch,
-		"instance_type":        serv.InstanceType,
-		"cidr_base":            sys.CIDR,
-		"zone":                 sys.Zone,
-		"iam_profile":          serv.IAM,
-		"cluster_name":         serv.ClusterName,
-		"cluster_ports":        serv.Expose,
-		"cluster_info":         serv.ClusterInfo,
+func ServiceProvisioningVars(env system.Environment, sys system.System, clust system.Cluster, serv system.Service) (vars map[string]any) {
+	vars = map[string]any{}
+	addVars(env.Vars, vars)
+	addVars(sys.Vars, vars)
+	addVars(clust.Vars, vars)
+	addVars(map[string]any{
+		"region":              os.Getenv("aws.region"),
+		"env":                 env.Name,
+		"domain":              sys.Domain,
+		"nerthus_host":        env.Nerthus,
+		"visuale_host":        env.Visuale,
+		"system":              sys.Name,
+		"cluster":             clust.Name,
+		"name_base":           sys.Scope,
+		"vpc_name":            sys.VPC,
+		"key_name":            sys.Key,
+		"node_names":          clust.NodeNames,
+		"loadbalancer_name":   sys.Loadbalancer,
+		"security_group_name": clust.SecurityGroup,
+		"cidr_base":           sys.CIDR,
+		"zone":                sys.Zone,
+		"cluster_name":        clust.ClusterName,
+		"cluster_ports":       clust.Expose,
+		"cluster_info":        clust.ClusterInfo,
+	}, vars)
+	if clust.HasWebserverPort() {
+		vars["webserver_port"] = clust.GetWebserverPort()
 	}
-	if serv.WebserverPort != nil {
-		vars["webserver_port"] = serv.WebserverPort
-	}
-	if serv.TargetGroup != "" {
-		vars["target_group_name"] = serv.TargetGroup
-	}
-	if bootstrap {
-		boots := make([]string, len(serv.NodeNames))
-		for i := 0; i < len(boots); i++ {
-			boots[i] = `cat <<'EOF' > bootstrap.yml
-{{ lookup('file', 'nodes/` + serv.NodeNames[i] + `_bootstrap.yml') }}
-EOF
-su -c "ansible-playbook bootstrap.yml" ec2-user`
+
+	if serv.Properties != nil {
+		propertiesName, props, err := properties.Calculate(serv)
+		if err != nil {
+			log.WithError(err).Fatal("temptest")
+			return
 		}
-		vars["bootstrap"] = boots
+		vars["properties_name"] = propertiesName
+		vars["local_override_content"] = props
 	}
+	var allFiles []file.File
+	if serv.Dirs != nil {
+		for localDir, nodeDir := range *serv.Dirs {
+			files, err := dir.ReadFilesFromDir(sys.FS, localDir, nodeDir)
+			if err != nil {
+				log.WithError(err).Error("while reading files from disk", "sys", sys.FS, "local", localDir, "node", nodeDir)
+				continue
+			}
+			if len(allFiles) == 0 {
+				allFiles = files
+				continue
+			}
+			allFiles = append(allFiles, files...)
+		}
+	}
+	func() {
+		if serv.Files != nil {
+			files := file.FilesFromConfig(*serv.Files)
+			if len(allFiles) == 0 {
+				allFiles = files
+				return
+			}
+			allFiles = append(allFiles, files...)
+		}
+	}()
+	if len(allFiles) > 0 {
+		vars["files"] = allFiles
+		vars["dirs"] = file.DirsForFiles(allFiles)
+	}
+
+	vars["health_type"] = serv.ServiceInfo.HealthType
+	vars["artifact_id"] = serv.ServiceInfo.Artifact.Id
+	vars["artifact_group"] = serv.ServiceInfo.Artifact.Group
+	vars["artifact_release"] = serv.ServiceInfo.Artifact.Release
+	vars["artifact_snapshot"] = serv.ServiceInfo.Artifact.Snapshot
+	vars["artifact_user"] = serv.ServiceInfo.Artifact.User
+	vars["artifact_password"] = serv.ServiceInfo.Artifact.Password
+	vars["service_type"] = serv.ServiceInfo.ServiceType
 	if strings.ToLower(os.Getenv("allowAllRegions")) == "true" {
 		if r, ok := sys.Vars["region"]; ok && r != "" {
 			vars["region"] = r
@@ -56,5 +94,13 @@ su -c "ansible-playbook bootstrap.yml" ec2-user`
 			vars["region"] = r
 		}
 	}
+	return
+}
+
+func ServiceNodeVars(clust system.Cluster, nodeNum int, vars map[string]any) (outVars map[string]any) {
+	outVars = map[string]any{}
+	addVars(vars, outVars)
+	outVars["hostname"] = clust.NodeNames[nodeNum]
+	outVars["server_number"] = strconv.Itoa(nodeNum)
 	return
 }
