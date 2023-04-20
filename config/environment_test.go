@@ -17,7 +17,13 @@ func TestReadFullEnv(t *testing.T) {
 	if len(envConf.SystemConfigs) < 4 {
 		t.Fatal("missing system configs")
 	}
+	if envConf.Domain == "" {
+		t.Fatal("env missing domain")
+	}
 	for _, system := range envConf.SystemConfigs {
+		if system.Domain == "" {
+			t.Fatal("system missing domain")
+		}
 		for _, cluster := range system.Clusters {
 			for _, service := range cluster.Services {
 				if service.ServiceInfo == nil {
