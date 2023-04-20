@@ -41,15 +41,23 @@ func TestReadFullEnv(t *testing.T) {
 				if service.ServiceInfo == nil {
 					t.Fatal("serviceInfo was nil")
 				}
+				serviceVars := ServiceProvisioningVars(envConf, system, *cluster, *service)
+				serviceNodeVars := ServiceNodeVars(*cluster, 0, serviceVars)
+				servicePlay := generators.GenerateServicePlay(*cluster, *service, serviceNodeVars)
+				if len(servicePlay.Tasks) == 0 {
+					t.Fatal("tasks missing in play")
+				}
+				if service.Name == "nerthus" {
+					if !service.ServiceInfo.Requirements.IsFrontend {
+						t.Fatal("nerthus is not frontend")
+					}
+					if servicePlay.Vars["is_frontend"] != true {
+						t.Fatal("nerthus service play var is_frontend is not true")
+					}
+				}
 				if cluster.Name == "visuale" {
 					if !arrayContains(service.ServiceInfo.Requirements.Roles, "service_files") {
 						t.Fatal("visuale was missing service_files role")
-					}
-					serviceVars := ServiceProvisioningVars(envConf, system, *cluster, *service)
-					serviceNodeVars := ServiceNodeVars(*cluster, 0, serviceVars)
-					servicePlay := generators.GenerateServicePlay(*cluster, *service, serviceNodeVars)
-					if len(servicePlay.Tasks) == 0 {
-						t.Fatal("tasks missing in play")
 					}
 					if _, ok := servicePlay.Vars["service"]; !ok {
 						t.Fatal("service variable missing", "service", service.Name)
