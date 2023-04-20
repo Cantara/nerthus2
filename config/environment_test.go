@@ -2,6 +2,8 @@ package config
 
 import (
 	"embed"
+	"github.com/cantara/nerthus2/executors/ansible/generators"
+	"log"
 	"os"
 	"testing"
 )
@@ -14,6 +16,9 @@ func TestReadFullEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(envConf.Roles) == 0 {
+		t.Fatal("env roles missing")
+	}
 	if len(envConf.SystemConfigs) < 4 {
 		t.Fatal("missing system configs")
 	}
@@ -24,10 +29,28 @@ func TestReadFullEnv(t *testing.T) {
 		if system.Domain == "" {
 			t.Fatal("system missing domain")
 		}
+		if len(system.Roles) == 0 {
+			t.Fatal("system roles missing")
+		}
 		for _, cluster := range system.Clusters {
+			if len(cluster.Roles) == 0 {
+				t.Fatal("cluster roles missing")
+			}
 			for _, service := range cluster.Services {
 				if service.ServiceInfo == nil {
 					t.Fatal("serviceInfo was nil")
+				}
+				log.Println(cluster.Name)
+				if cluster.Name == "visuale" {
+					if !arrayContains(service.ServiceInfo.Requirements.Roles, "service_files") {
+						t.Fatal("visuale was missing service_files role")
+					}
+					serviceVars := ServiceProvisioningVars(envConf, system, *cluster, *service)
+					serviceNodeVars := ServiceNodeVars(*cluster, 0, serviceVars)
+					servicePlay := generators.GenerateServicePlay(*cluster, *service, serviceNodeVars)
+					if len(servicePlay.Tasks) == 0 {
+						t.Fatal("tasks missing in play")
+					}
 				}
 			}
 		}

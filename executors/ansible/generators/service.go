@@ -19,11 +19,16 @@ func GenerateServicePlay(cluster system.Cluster, serv system.Service, nodeVars m
 		oi++
 	}
 	var done []string
+	for _, dep := range []string{
+		"service",
+	} {
+		addTask(dep, &pb, &done, cluster.Roles)
+	}
 	for _, dep := range serv.ServiceInfo.Requirements.Roles {
 		if arrayContains(overrides, dep) {
 			continue
 		}
-		addTask(dep, &pb, &done, serv.Roles)
+		addTask(dep, &pb, &done, cluster.Roles)
 	}
 	addVars(nodeVars, pb.Vars)
 	return

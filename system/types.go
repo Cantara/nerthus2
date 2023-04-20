@@ -115,17 +115,16 @@ func (c Cluster) IsClusterAble() bool {
 }
 
 type Service struct {
-	Name          string                  `yaml:"name"`
-	Vars          Vars                    `yaml:"vars"`
-	Local         string                  `yaml:"local,omitempty"`
-	Git           string                  `yaml:"git,omitempty"`
-	Branch        string                  `yaml:"branch,omitempty"`
-	WebserverPort *int                    `yaml:"webserver_port,omitempty"`
-	Properties    *string                 `yaml:"properties,omitempty"`
-	Dirs          *map[string]string      `yaml:"dirs,omitempty"`
-	Files         *map[string]file.File   `yaml:"files,omitempty"`
-	ServiceInfo   *service.Service        `yaml:",omitempty"`
-	Roles         map[string]ansible.Role `yaml:",omitempty"`
+	Name          string                `yaml:"name"`
+	Vars          Vars                  `yaml:"vars"`
+	Local         string                `yaml:"local,omitempty"`
+	Git           string                `yaml:"git,omitempty"`
+	Branch        string                `yaml:"branch,omitempty"`
+	WebserverPort *int                  `yaml:"webserver_port,omitempty"`
+	Properties    *string               `yaml:"properties,omitempty"`
+	Dirs          *map[string]string    `yaml:"dirs,omitempty"`
+	Files         *map[string]file.File `yaml:"files,omitempty"`
+	ServiceInfo   *service.Service      `yaml:",omitempty"`
 }
 
 type ClusterInfo struct {
