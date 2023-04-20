@@ -6,44 +6,44 @@ import (
 	"strings"
 )
 
-func ClusterProvisioningVars(env system.Environment, sys system.System, clust system.Cluster, bootstrap bool) (vars map[string]any) {
+func ClusterProvisioningVars(env system.Environment, sys system.System, cluster system.Cluster, bootstrap bool) (vars map[string]any) {
 	vars = map[string]any{
 		"region":               os.Getenv("aws.region"),
 		"env":                  env.Name,
 		"nerthus_host":         env.Nerthus,
 		"visuale_host":         env.Visuale,
 		"system":               sys.Name,
-		"service":              clust.Name,
+		"service":              cluster.Name,
 		"name_base":            sys.Scope,
 		"vpc_name":             sys.VPC,
 		"key_name":             sys.Key,
-		"node_names":           clust.NodeNames,
+		"node_names":           cluster.NodeNames,
 		"loadbalancer_name":    sys.Loadbalancer,
 		"loadbalancer_group":   sys.LoadbalancerGroup,
-		"security_group_name":  clust.SecurityGroup,
-		"security_group_rules": clust.SecurityGroupRules,
-		"is_frontend":          clust.IsClusterAble(),
-		"os_name":              clust.OSName,
-		"os_arch":              clust.OSArch,
-		"instance_type":        clust.InstanceType,
+		"security_group_name":  cluster.SecurityGroup,
+		"security_group_rules": cluster.SecurityGroupRules,
+		"is_frontend":          cluster.IsClusterAble(),
+		"os_name":              cluster.OSName,
+		"os_arch":              cluster.OSArch,
+		"instance_type":        cluster.InstanceType,
 		"cidr_base":            sys.CIDR,
 		"zone":                 sys.Zone,
-		"iam_profile":          clust.IAM,
-		"cluster_name":         clust.ClusterName,
-		"cluster_ports":        clust.Expose,
-		"cluster_info":         clust.ClusterInfo,
+		"iam_profile":          cluster.IAM,
+		"cluster_name":         cluster.ClusterName,
+		"cluster_ports":        cluster.Expose,
+		"cluster_info":         cluster.ClusterInfo,
 	}
-	if clust.HasWebserverPort() {
-		vars["webserver_port"] = clust.GetWebserverPort()
+	if cluster.HasWebserverPort() {
+		vars["webserver_port"] = cluster.GetWebserverPort()
 	}
-	if clust.TargetGroup != "" {
-		vars["target_group_name"] = clust.TargetGroup
+	if cluster.TargetGroup != "" {
+		vars["target_group_name"] = cluster.TargetGroup
 	}
 	if bootstrap {
-		boots := make([]string, len(clust.NodeNames))
+		boots := make([]string, len(cluster.NodeNames))
 		for i := 0; i < len(boots); i++ {
 			boots[i] = `cat <<'EOF' > bootstrap.yml
-{{ lookup('file', 'nodes/` + clust.NodeNames[i] + `_bootstrap.yml') }}
+{{ lookup('file', 'nodes/` + cluster.NodeNames[i] + `_bootstrap.yml') }}
 EOF
 su -c "ansible-playbook bootstrap.yml" ec2-user`
 		}

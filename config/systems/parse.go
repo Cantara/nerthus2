@@ -123,65 +123,71 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	return
 }
 
-func clusterBase(sys system.System, clust *system.Cluster) (err error) {
-	if clust.Generated == true {
+func clusterBase(sys system.System, cluster *system.Cluster) (err error) {
+	if cluster.Generated == true {
 		return
 	}
 	var extra string
-	if sys.Name != clust.Name {
-		extra = fmt.Sprintf("-%s", clust.Name)
+	if sys.Name != cluster.Name {
+		extra = fmt.Sprintf("-%s", cluster.Name)
 	}
-	if clust.OSName == "" {
-		clust.OSName = sys.OSName
+	if cluster.OSName == "" {
+		cluster.OSName = sys.OSName
 	}
-	if clust.OSArch == "" {
-		clust.OSArch = sys.OSArch
+	if cluster.OSArch == "" {
+		cluster.OSArch = sys.OSArch
 	}
-	if clust.InstanceType == "" {
-		clust.InstanceType = sys.InstanceType
+	if cluster.InstanceType == "" {
+		cluster.InstanceType = sys.InstanceType
 	}
-	if clust.SecurityGroup == "" {
-		clust.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
+	if cluster.SecurityGroup == "" {
+		cluster.SecurityGroup = fmt.Sprintf("%s%s-sg", sys.Scope, extra)
 	}
-	if clust.TargetGroup == "" && clust.HasWebserverPort() {
-		clust.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
+	if cluster.TargetGroup == "" && cluster.HasWebserverPort() {
+		cluster.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
 	}
-	if clust.ClusterName == "" {
-		clust.ClusterName = fmt.Sprintf("%s.%s", clust.Name, sys.Zone)
+	if cluster.ClusterName == "" {
+		cluster.ClusterName = fmt.Sprintf("%s.%s", cluster.Name, sys.Zone)
 	}
-	clust.ClusterInfo = map[string]system.ClusterInfo{}
-	clust.Roles = map[string]ansible.Role{}
+	cluster.ClusterInfo = map[string]system.ClusterInfo{}
+	cluster.Roles = map[string]ansible.Role{}
 	for k, v := range sys.Roles {
-		clust.Roles[k] = v
+		cluster.Roles[k] = v
 	}
-	if clust.NumberOfNodes == 0 {
-		if clust.IsClusterAble() {
-			clust.NumberOfNodes = 3
-		} else {
-			clust.NumberOfNodes = 1
+	for i := range cluster.Services {
+		err = Service(sys, &cluster.Services[i])
+		if err != nil {
+			return
 		}
 	}
-	if len(clust.NodeNames) == 0 {
-		if clust.NumberOfNodes == 1 {
-			clust.NodeNames = []string{
+	if cluster.NumberOfNodes == 0 {
+		if cluster.IsClusterAble() {
+			cluster.NumberOfNodes = 3
+		} else {
+			cluster.NumberOfNodes = 1
+		}
+	}
+	if len(cluster.NodeNames) == 0 {
+		if cluster.NumberOfNodes == 1 {
+			cluster.NodeNames = []string{
 				fmt.Sprintf("%s%s", sys.Scope, extra),
 			}
 		} else {
-			clust.NodeNames = make([]string, clust.NumberOfNodes)
-			for num := 1; num <= clust.NumberOfNodes; num++ {
-				clust.NodeNames[num-1] = fmt.Sprintf("%s%s-%d", sys.Scope, extra, num)
+			cluster.NodeNames = make([]string, cluster.NumberOfNodes)
+			for num := 1; num <= cluster.NumberOfNodes; num++ {
+				cluster.NodeNames[num-1] = fmt.Sprintf("%s%s-%d", sys.Scope, extra, num)
 			}
 		}
 	}
-	if len(clust.NodeNames) != clust.NumberOfNodes {
+	if len(cluster.NodeNames) != cluster.NumberOfNodes {
 		err = ErrMissMatchNumberOfNamesAndProvidedNames
-		log.WithError(err).Error("while creating service config", "numberOfNodes", clust.NumberOfNodes, "nodeNames", clust.NodeNames)
+		log.WithError(err).Error("while creating service config", "numberOfNodes", cluster.NumberOfNodes, "nodeNames", cluster.NodeNames)
 		return
 	}
 
-	for _, serv := range clust.Services {
+	for _, serv := range cluster.Services {
 		if serv.WebserverPort != nil && *serv.WebserverPort > 0 {
-			clust.SecurityGroupRules = []ansible.SecurityGroupRule{
+			cluster.SecurityGroupRules = []ansible.SecurityGroupRule{
 				{
 					Proto:    "tcp",
 					FromPort: strconv.Itoa(*serv.WebserverPort),
@@ -191,7 +197,7 @@ func clusterBase(sys system.System, clust *system.Cluster) (err error) {
 			}
 		}
 	}
-	clust.Generated = true
+	cluster.Generated = true
 	return
 }
 
@@ -219,9 +225,9 @@ func Service(sys system.System, serv *system.Service) (err error) {
 	return
 }
 
-func Cluster(sys system.System, clust *system.Cluster) (err error) {
-	if !clust.Generated {
-		err = clusterBase(sys, clust)
+func Cluster(sys system.System, cluster *system.Cluster) (err error) {
+	if !cluster.Generated {
+		err = clusterBase(sys, cluster)
 		if err != nil {
 			return
 		}
@@ -229,10 +235,10 @@ func Cluster(sys system.System, clust *system.Cluster) (err error) {
 
 	for _, fromServ := range sys.Clusters {
 		for from, to := range fromServ.Override {
-			if clust.Name != to {
+			if cluster.Name != to {
 				continue
 			}
-			if len(clust.Expose) == 0 {
+			if len(cluster.Expose) == 0 {
 				err = ErrOverrideDoesNotExportAnyPorts
 				log.WithError(err).Error("while setting override security group rules", "from", from, "to", to)
 				return
@@ -243,9 +249,9 @@ func Cluster(sys system.System, clust *system.Cluster) (err error) {
 					return
 				}
 			}
-			sgrs := make([]ansible.SecurityGroupRule, len(clust.Expose))
+			sgrs := make([]ansible.SecurityGroupRule, len(cluster.Expose))
 			i := 0
-			for _, v := range clust.Expose {
+			for _, v := range cluster.Expose {
 				sgrs[i] = ansible.SecurityGroupRule{
 					Proto:    "tcp",
 					FromPort: strconv.Itoa(v),
@@ -254,10 +260,10 @@ func Cluster(sys system.System, clust *system.Cluster) (err error) {
 				}
 				i++
 			}
-			clust.SecurityGroupRules = append(clust.SecurityGroupRules, sgrs...)
-			fromServ.ClusterInfo[clust.Name] = system.ClusterInfo{
-				Name:  clust.ClusterName,
-				Ports: clust.Expose,
+			cluster.SecurityGroupRules = append(cluster.SecurityGroupRules, sgrs...)
+			fromServ.ClusterInfo[cluster.Name] = system.ClusterInfo{
+				Name:  cluster.ClusterName,
+				Ports: cluster.Expose,
 			}
 		}
 	}

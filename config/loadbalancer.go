@@ -38,13 +38,13 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 	}
 	numberOfFrontendServices := 0
 	var frontendTargetGroups []string
-	for _, clust := range sys.Clusters { // This whole thing seems weird
-		for _, serv := range clust.Services {
+	for _, cluster := range sys.Clusters { // This whole thing seems weird
+		for _, serv := range cluster.Services {
 			if !serv.ServiceInfo.Requirements.IsFrontend {
 				continue
 			}
 			numberOfFrontendServices++
-			frontendTargetGroups = append(frontendTargetGroups, clust.TargetGroup)
+			frontendTargetGroups = append(frontendTargetGroups, cluster.TargetGroup)
 			break // This logic is forcing max one frontend per cluster. This seems like a weird solution
 		}
 	}
@@ -59,17 +59,17 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 
 	i := 0
 	rules := []Rule{}
-	for _, clust := range sys.Clusters {
-		if clust.Playbook != "" {
+	for _, cluster := range sys.Clusters {
+		if cluster.Playbook != "" {
 			continue
 		}
-		if clust.HasFrontend() { //TODO: This should also add a part about Routing method
+		if cluster.HasFrontend() { //TODO: This should also add a part about Routing method
 			continue
 		}
-		if !clust.HasWebserverPort() {
+		if !cluster.HasWebserverPort() {
 			continue
 		}
-		if clust.TargetGroup == "" { //This seems redundant
+		if cluster.TargetGroup == "" { //This seems redundant
 			continue
 		}
 		i++
@@ -79,15 +79,15 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 			cond = Condition{
 				Field: "path-pattern",
 				Values: []string{
-					fmt.Sprintf("/%s", clust.Name),
-					fmt.Sprintf("/%s/*", clust.Name),
+					fmt.Sprintf("/%s", cluster.Name),
+					fmt.Sprintf("/%s/*", cluster.Name),
 				},
 			}
 		case system.RoutingHost:
 			cond = Condition{
 				Field: "host-header",
 				Values: []string{
-					fmt.Sprintf("%s-%s.%s", clust.Name, sys.Name, env.Domain),
+					fmt.Sprintf("%s-%s.%s", cluster.Name, sys.Name, env.Domain),
 				},
 			}
 		}
@@ -95,7 +95,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 			Conditions: []Condition{cond},
 			Actions: []Action{
 				{
-					TargetGroupName: clust.TargetGroup,
+					TargetGroupName: cluster.TargetGroup,
 					Type:            "forward",
 				},
 			},

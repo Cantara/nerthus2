@@ -11,11 +11,11 @@ import (
 	"strings"
 )
 
-func ServiceProvisioningVars(env system.Environment, sys system.System, clust system.Cluster, serv system.Service) (vars map[string]any) {
+func ServiceProvisioningVars(env system.Environment, sys system.System, cluster system.Cluster, serv system.Service) (vars map[string]any) {
 	vars = map[string]any{}
 	addVars(env.Vars, vars)
 	addVars(sys.Vars, vars)
-	addVars(clust.Vars, vars)
+	addVars(cluster.Vars, vars)
 	addVars(map[string]any{
 		"region":              os.Getenv("aws.region"),
 		"env":                 env.Name,
@@ -23,21 +23,21 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, clust sy
 		"nerthus_host":        env.Nerthus,
 		"visuale_host":        env.Visuale,
 		"system":              sys.Name,
-		"cluster":             clust.Name,
+		"cluster":             cluster.Name,
 		"name_base":           sys.Scope,
 		"vpc_name":            sys.VPC,
 		"key_name":            sys.Key,
-		"node_names":          clust.NodeNames,
+		"node_names":          cluster.NodeNames,
 		"loadbalancer_name":   sys.Loadbalancer,
-		"security_group_name": clust.SecurityGroup,
+		"security_group_name": cluster.SecurityGroup,
 		"cidr_base":           sys.CIDR,
 		"zone":                sys.Zone,
-		"cluster_name":        clust.ClusterName,
-		"cluster_ports":       clust.Expose,
-		"cluster_info":        clust.ClusterInfo,
+		"cluster_name":        cluster.ClusterName,
+		"cluster_ports":       cluster.Expose,
+		"cluster_info":        cluster.ClusterInfo,
 	}, vars)
-	if clust.HasWebserverPort() {
-		vars["webserver_port"] = clust.GetWebserverPort()
+	if cluster.HasWebserverPort() {
+		vars["webserver_port"] = cluster.GetWebserverPort()
 	}
 
 	if serv.Properties != nil {
@@ -97,10 +97,10 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, clust sy
 	return
 }
 
-func ServiceNodeVars(clust system.Cluster, nodeNum int, vars map[string]any) (outVars map[string]any) {
+func ServiceNodeVars(cluster system.Cluster, nodeNum int, vars map[string]any) (outVars map[string]any) {
 	outVars = map[string]any{}
 	addVars(vars, outVars)
-	outVars["hostname"] = clust.NodeNames[nodeNum]
+	outVars["hostname"] = cluster.NodeNames[nodeNum]
 	outVars["server_number"] = strconv.Itoa(nodeNum)
 	return
 }
