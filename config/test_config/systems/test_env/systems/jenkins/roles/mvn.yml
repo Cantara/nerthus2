@@ -1,0 +1,13 @@
+name: Install Maven
+tasks:
+  - block:
+    - name: Download Maven
+      ansible.builtin.get_url:
+        url: "http://repos.fedorapeople.org/repos/dchen/apache-maven/epel-apache-maven.repo"
+        dest: "/etc/yum.repos.d/epel-apache-maven.repo"
+    - name: Install Maven
+      ansible.builtin.yum:
+        name: apache-maven
+        state: latest
+    become: yes
+    become_user: root

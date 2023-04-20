@@ -1,0 +1,7 @@
+name: Install OpenJDK 11 jre
+tasks:
+  - name: Install OpenJDK 11 jre
+    ansible.builtin.shell: |
+      amazon-linux-extras install -y java-openjdk11
+    become: yes
+    become_user: root

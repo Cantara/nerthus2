@@ -1,0 +1,21 @@
+os_name: Amazon Linux 2023
+os_arch: arm64
+instance_type: t4g.large
+cidr_base: 10.99.0
+vars:
+  service_tag: SoftwareFactory
+clusters:
+  - name: nerthus
+    services:
+      - git: github.com/Cantara/nerthus2
+        branch: main
+        webserver_port: 13030
+        properties: |
+          nerthus.url={{ nerthus_host }}
+          aws.region={{ region }}
+          hostname={{ hostname }}
+          api.username=redacted
+          api.password=redacted
+          environments.static_key=redacted
+          pubkey.static_key=redacted
+    iam_profile: Nerthus

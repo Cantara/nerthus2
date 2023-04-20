@@ -32,7 +32,7 @@ import (
 	"time"
 )
 
-//go:embed roles bootstrap
+//go:embed bootstrap
 var EFS embed.FS
 
 var bootstrap bool

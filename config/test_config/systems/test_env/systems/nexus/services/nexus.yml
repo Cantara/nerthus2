@@ -1,0 +1,12 @@
+name: Nexus
+service_type: H2A
+health_type: nexus
+requirements:
+  ram: 1GB
+  disk: 5GB
+  cpu: 1
+  properties: .env
+  not_cluster_able: true
+  is_frontend: true
+  roles:
+    - nexus

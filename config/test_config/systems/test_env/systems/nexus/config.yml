@@ -1,0 +1,10 @@
+os_name: Amazon Linux 2
+cidr_base: 10.97.0
+vars:
+  service_tag: SoftwareFactory
+clusters:
+  - name: nexus
+    number_of_nodes: 1
+    services:
+      - local: nexus.yml
+        webserver_port: 8081

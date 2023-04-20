@@ -1,0 +1,10 @@
+name: Mongodb
+service_type: A2A
+health_type: mongodb
+requirements:
+  ram: 1GB
+  disk: 20GB
+  cpu: 1
+  not_cluster_able: true
+  roles:
+    - mongodb_docker

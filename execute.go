@@ -4,48 +4,12 @@ import (
 	"context"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config"
-	"github.com/cantara/nerthus2/config/systems"
 	"github.com/cantara/nerthus2/executors"
 	"github.com/cantara/nerthus2/executors/ansible/generators"
 	"github.com/cantara/nerthus2/message"
-	"github.com/cantara/nerthus2/system"
+	"os"
 	"strings"
 )
-
-func ReadFullEnvConfig(env string) (envConf system.Environment, err error) {
-	builtinRoles, err := systems.BuiltinRoles(EFS)
-	if err != nil {
-		log.WithError(err).Fatal("while getting builtin roles")
-	}
-	envConf, err = systems.Environment(env, builtinRoles)
-	if err != nil {
-		log.WithError(err).Fatal("while getting environment config")
-	}
-	for _, systemName := range envConf.Systems {
-		systemConf, err := systems.System(envConf, systemName)
-		if err != nil {
-			log.WithError(err).Error("while getting system config")
-			continue
-		}
-		envConf.SystemConfigs[systemName] = systemConf
-		for _, cluster := range systemConf.Clusters {
-			err = systems.Cluster(systemConf, cluster)
-			if err != nil {
-				log.WithError(err).Error("while getting service config")
-				continue
-			}
-			/* FIXME? Missing logic for bootstrapping
-			if bootstrap && strings.ToLower(cluster.ServiceInfo.Name) != "nerthus" {
-				//log.Info("skipping service while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "service", service.Name)
-				continue
-			}
-			*/
-			//log.Info("executing service", "env", envConf.Name, "system", systemConf.Name, "service", service.Name, "overrides", service.Override)
-
-		}
-	}
-	return
-}
 
 /*
 	var bootstrapVars *properties.BootstrapVars
@@ -58,8 +22,10 @@ func ReadFullEnvConfig(env string) (envConf system.Environment, err error) {
 	}
 */
 
+var baseFS = os.DirFS(".")
+
 func ExecuteEnv(env string) {
-	envConf, err := ReadFullEnvConfig(env)
+	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
 	}
@@ -76,10 +42,10 @@ func ExecuteEnv(env string) {
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
 			for _, service := range cluster.Services {
-				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
 				for nodeNum, nodeName := range cluster.NodeNames {
 					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
-					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, *service, serviceNodeVars))
 					if err != nil {
 						log.WithError(err).Error("while trying to create playbook yaml")
 						continue
@@ -116,7 +82,7 @@ func ExecuteSys(env, sys string) {
 		log.Fatal("can't bootstrap a single systemConf", "env", env, "system", sys)
 		//Might want to allow this
 	}
-	envConf, err := ReadFullEnvConfig(env)
+	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
 	}
@@ -132,10 +98,10 @@ func ExecuteSys(env, sys string) {
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
 			for _, service := range cluster.Services {
-				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, service)
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
 				for nodeNum, nodeName := range cluster.NodeNames {
 					serviceNodeVars := config.ServiceNodeVars(*cluster, nodeNum, serviceVars) //, bootstrapVars)
-					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, service, serviceNodeVars))
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*cluster, *service, serviceNodeVars))
 					if err != nil {
 						log.WithError(err).Error("while trying to create playbook yaml")
 						continue
@@ -171,7 +137,7 @@ func ExecuteClust(env, sys, cluster string) {
 		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", cluster)
 		//Might want to allow this
 	}
-	envConf, err := ReadFullEnvConfig(env)
+	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
 	}
@@ -186,10 +152,10 @@ func ExecuteClust(env, sys, cluster string) {
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", clusterConf.Name, "overrides", clusterConf.Override)
 
 			for _, service := range clusterConf.Services {
-				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, service)
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, *service)
 				for nodeNum, nodeName := range clusterConf.NodeNames {
 					serviceNodeVars := config.ServiceNodeVars(*clusterConf, nodeNum, serviceVars) //, bootstrapVars)
-					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*clusterConf, service, serviceNodeVars))
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*clusterConf, *service, serviceNodeVars))
 					if err != nil {
 						log.WithError(err).Error("while trying to create playbook yaml")
 						continue
@@ -225,7 +191,7 @@ func ExecuteServ(env, sys, cluster, serv string) {
 		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", cluster, "service", serv)
 		//Might want to allow this
 	}
-	envConf, err := ReadFullEnvConfig(env)
+	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
 	}
@@ -243,10 +209,10 @@ func ExecuteServ(env, sys, cluster, serv string) {
 				if strings.ToLower(service.Name) != serv {
 					continue
 				}
-				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, service)
+				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, *service)
 				for nodeNum, nodeName := range clusterConf.NodeNames {
 					serviceNodeVars := config.ServiceNodeVars(*clusterConf, nodeNum, serviceVars) //, bootstrapVars)
-					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*clusterConf, service, serviceNodeVars))
+					serviceProvisioningPlayYaml, err := generators.PlayToYaml(generators.GenerateServicePlay(*clusterConf, *service, serviceNodeVars))
 					if err != nil {
 						log.WithError(err).Error("while trying to create playbook yaml")
 						continue

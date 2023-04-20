@@ -1,0 +1,36 @@
+cidr_base: 10.98.0
+instance_type: t4g.small
+vars:
+  service_tag: SoftwareFactory
+clusters:
+  - name: visuale
+    number_of_nodes: 1
+    services:
+      - local: visuale.yml
+        git: github.com/Cantara/visuale
+        branch: master
+        webserver_port: 9292
+        properties: |
+          server.accessToken=accessToken
+        files:
+          environment_config.json:
+            content: |
+              {
+                "environment_name": "DEV Test",
+                "nodes": [
+                  {
+                    "service_name": "Visuale",
+                    "service_tag": "SoftwareFactory external",
+                    "service_type": "H2A",
+                    "node_name": "lb",
+                    "health_url": "https://{{ visuale_host }}/health"
+                  },
+                  {
+                    "service_name": "Nerthus",
+                    "service_tag": "SoftwareFactory external",
+                    "service_type": "H2A",
+                    "node_name": "lb",
+                    "health_url": "https://{{ nerthus_host }}/health"
+                  }
+                ]
+              }

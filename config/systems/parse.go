@@ -12,7 +12,6 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,12 +21,12 @@ import (
 var builtinRoleCash = make(map[string]ansible.Role)
 var loadBuiltin sync.Once
 
-func BuiltinRoles(efs fs.FS) (roles map[string]ansible.Role, err error) {
+func BuiltinRoles(bfs fs.FS) (roles map[string]ansible.Role, err error) {
 	if len(builtinRoleCash) != 0 {
 		return builtinRoleCash, nil
 	}
 	loadBuiltin.Do(func() {
-		err = ansible.ReadRoleDir(efs, "roles", builtinRoleCash)
+		err = ansible.ReadRoleDir(bfs, "builtin_roles", builtinRoleCash)
 	})
 	if err != nil {
 		return
@@ -35,11 +34,15 @@ func BuiltinRoles(efs fs.FS) (roles map[string]ansible.Role, err error) {
 	return builtinRoleCash, nil
 }
 
-func Environment(env string, builtinRoles map[string]ansible.Role) (config system.Environment, err error) {
+func Environment(env string, builtinRoles map[string]ansible.Role, baseFS fs.FS) (config system.Environment, err error) {
 	dir := filepath.Clean("systems/" + env)
 
-	envFS := os.DirFS(dir)
-	config, err = LoadConfig[system.Environment](dir)
+	envFS, err := fs.Sub(baseFS, dir)
+	if err != nil {
+		return
+	}
+	//envFS := os.DirFS(dir)
+	config, err = LoadConfig[system.Environment](envFS)
 	if err != nil {
 		return
 	}
@@ -64,10 +67,13 @@ func Environment(env string, builtinRoles map[string]ansible.Role) (config syste
 }
 
 func System(env system.Environment, systemDir string) (config system.System, err error) {
-	dir := filepath.Clean(fmt.Sprintf("%s/systems/%s", env.Dir, systemDir))
+	dir := filepath.Clean(fmt.Sprintf("systems/%s", systemDir))
 
-	sysFS := os.DirFS(dir)
-	config, err = LoadConfig[system.System](dir)
+	sysFS, err := fs.Sub(env.FS, dir)
+	if err != nil {
+		return
+	}
+	config, err = LoadConfig[system.System](sysFS)
 	if err != nil {
 		return
 	}
@@ -123,7 +129,7 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	return
 }
 
-func clusterBase(sys system.System, cluster *system.Cluster) (err error) {
+func clusterBase(env system.Environment, sys system.System, cluster *system.Cluster) (err error) {
 	if cluster.Generated == true {
 		return
 	}
@@ -155,7 +161,7 @@ func clusterBase(sys system.System, cluster *system.Cluster) (err error) {
 		cluster.Roles[k] = v
 	}
 	for i := range cluster.Services {
-		err = Service(sys, &cluster.Services[i])
+		err = Service(env, sys, cluster.Services[i])
 		if err != nil {
 			return
 		}
@@ -201,9 +207,9 @@ func clusterBase(sys system.System, cluster *system.Cluster) (err error) {
 	return
 }
 
-func Service(sys system.System, serv *system.Service) (err error) {
+func Service(env system.Environment, sys system.System, serv *system.Service) (err error) {
 	if serv.Local != "" {
-		serv.ServiceInfo, err = LocalService(sys.Dir, serv)
+		serv.ServiceInfo, err = LocalService(serv, env.FS, sys.FS)
 		if err != nil {
 			return
 		}
@@ -225,9 +231,9 @@ func Service(sys system.System, serv *system.Service) (err error) {
 	return
 }
 
-func Cluster(sys system.System, cluster *system.Cluster) (err error) {
+func Cluster(env system.Environment, sys system.System, cluster *system.Cluster) (err error) {
 	if !cluster.Generated {
-		err = clusterBase(sys, cluster)
+		err = clusterBase(env, sys, cluster)
 		if err != nil {
 			return
 		}
@@ -244,7 +250,7 @@ func Cluster(sys system.System, cluster *system.Cluster) (err error) {
 				return
 			}
 			if !fromServ.Generated {
-				err = clusterBase(sys, fromServ)
+				err = clusterBase(env, sys, fromServ)
 				if err != nil {
 					return
 				}
@@ -313,14 +319,21 @@ func GitService(serv *system.Service) (servInfo *service.Service, err error) {
 	return
 }
 
-func LocalService(systemDir string, serv *system.Service) (servInfo *service.Service, err error) {
+func LocalService(serv *system.Service, envFS, sysFS fs.FS) (servInfo *service.Service, err error) {
 	if serv.Local == "" {
 		return
 	}
-	data, err := os.ReadFile(filepath.Clean(fmt.Sprintf("%s/services/%s", systemDir, serv.Local)))
+	data, err := fs.ReadFile(sysFS, filepath.Clean(fmt.Sprintf("services/%s", serv.Local)))
 	if err != nil {
-		err = errors.Wrap(err, "unable to read local service file")
-		return
+		if !errors.Is(err, fs.ErrNotExist) {
+			err = errors.Wrap(err, "unable to read local service file")
+			return
+		}
+		data, err = fs.ReadFile(envFS, filepath.Clean(fmt.Sprintf("services/%s", serv.Local)))
+		if err != nil {
+			err = errors.Wrap(err, "unable to read local service file")
+			return
+		}
 	}
 	servInfo = &service.Service{}
 	err = yaml.Unmarshal(data, servInfo)

@@ -1,0 +1,28 @@
+name: Install Jenkins
+dependencies:
+  - role: openjdk_11 #JRE
+  - role: java_11 #JDK
+  - role: git
+tasks:
+  - block:
+    - name: Download Jenkins repo
+      ansible.builtin.get_url:
+        url: "https://pkg.jenkins.io/redhat-stable/jenkins.repo"
+        dest: "/etc/yum.repos.d/jenkins.repo"
+    - name: Install Jenkins keys
+      ansible.builtin.shell: |
+        rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+    - name: Install Jenkins keys
+      ansible.builtin.shell: |
+        rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    - name: Install Jenkins
+      ansible.builtin.yum:
+        name: jenkins
+        state: latest
+    - name: Enable jenkins
+      ansible.builtin.systemd:
+        name: jenkins
+        state: started
+        enabled: true
+    become: yes
+    become_user: root

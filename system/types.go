@@ -59,7 +59,7 @@ type Cluster struct {
 	OSName        string            `yaml:"os_name"`
 	OSArch        string            `yaml:"os_arch"`
 	InstanceType  string            `yaml:"instance_type"`
-	Services      []Service         `yaml:"services"`
+	Services      []*Service        `yaml:"services"`
 	Vars          Vars              `yaml:"vars"`
 	Expose        map[string]int    `yaml:"expose,omitempty"`
 	Playbook      string            `yaml:"playbook,omitempty"`

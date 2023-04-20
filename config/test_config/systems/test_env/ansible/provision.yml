@@ -1,0 +1,325 @@
+---
+- name: Bootstrapping Nerthus
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: ap-northeast-1
+    #ami: ami-0ed2199a781e8eff5
+    #os_name: Ubuntu Kinetic 22.10
+    os_name: Amazon Linux 2023
+    #os_name: Debian 11
+    os_arch: arm64
+    instance_type: t4g.nano #t3.small
+    cidr_base: 10.100.0
+    service: nerthus
+    system: cantara-lab
+    zone: lab.cantara.infra
+    key_name:
+    vpc_name:
+    security_group_name:
+    node_names: []
+    target_group_name:
+    loadbalancer_name:
+    security_group_rules: []
+    name_base:
+    iam_profile:
+    is_frontend: false
+  tasks:
+    - set_fact:
+        vpc_cidr: "{{ cidr_base }}.0/24"
+        subnets:
+          - { name: "{{ name_base }}-subnet-1", az: "{{ region }}a", cidr: "{{ cidr_base }}.0/26" }
+          - { name: "{{ name_base }}-subnet-2", az: "{{ region }}{{ 'b' if region != 'ap-northeast-1' else 'c' }}", cidr: "{{ cidr_base }}.64/26" }
+          - { name: "{{ name_base }}-subnet-3", az: "{{ region }}{{ 'c' if region != 'ap-northeast-1' else 'd' }}", cidr: "{{ cidr_base }}.128/26" }
+        security_group_rules_base:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: all
+            group_name: "{{ security_group_name }}"
+        lb_sg_rule: []
+        os_name_low: "{{ os_name | lower }}"
+    - set_fact:
+        os_filter: "{{ os_name_low | regex_replace('^amazon linux ', 'al') }}-ami-{{ os_name_low | split | last }}.*"
+      when: os_name_low is regex('^amazon linux 20')
+    - set_fact:
+        os_filter: "amzn2-ami-kernel-*-hvm-{{ os_name_low | split | last }}.*"
+      when: os_name_low == 'amazon linux 2'
+    - set_fact:
+        os_filter: "{{ os_name_low | split | first }}/images/hvm-ssd/{{ os_name_low | split | join('-') }}-*"
+      when: os_name_low is regex('^ubuntu')
+    - set_fact:
+        os_filter: "{{ os_name_low | split | join('-') }}-*"
+      when: os_name_low is regex('^debian')
+    - name: find AMI
+      ec2_ami_info:
+        region: "{{ region }}"
+        owners: amazon
+        filters:
+          name: "{{ os_filter }}"
+          architecture: "{{ os_arch if os_arch != 'amd64' else 'x86_64' }}"
+          virtualization-type: hvm
+      register: AMIs
+    - name: check if bootstrap file exists
+      stat:
+        path: "../keys/{{ key_name }}.pem"
+      register: keyfile
+    - set_fact:
+        bootstrap: |
+    - name: Create key pair
+      ec2_key:
+        name: "{{ key_name }}"
+        region: "{{ region }}"
+        key_type: "ed25519"
+        state: present
+      register: key_pair
+    - name: check if key file exists
+      stat:
+        path: "../keys/{{ key_name }}.pem"
+      register: keyfile
+    - name: Copy private key to local machine
+      copy:
+        content: "{{ key_pair.key.private_key }}"
+        dest: "../keys/{{ key_name }}.pem"
+        mode: 0600
+      when:
+        - keyfile.stat.exists == false
+        - key_pair.key.private_key is defined
+    - name: Create VPC
+      ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        cidr_block: "{{ vpc_cidr }}"
+        ipv6_cidr: true
+        region: "{{ region }}"
+        state: present
+      register: vpc
+    - name: Ansible | Print ipv6
+      debug:
+        msg: "{{ vpc.vpc.ipv6_cidr_block_association_set[0].ipv6_cidr_block[:-6] }}{{ index }}::/64"
+      loop: "{{ subnets | flatten(levels=1) }}"
+      loop_control:
+        index_var: index
+    - name: Associate subnet to the VPC
+      ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region }}"
+        cidr: "{{ item.cidr }}"
+        assign_instances_ipv6: true
+        ipv6_cidr: "{{ vpc.vpc.ipv6_cidr_block_association_set[0].ipv6_cidr_block[:-6] }}{{ index }}::/64"
+        az: "{{ item.az }}"
+        tags:
+          Name: "{{ item.name }}"
+      register: subnets
+      loop: "{{ subnets | flatten(levels=1) }}"
+      loop_control:
+        index_var: index
+    - name: Create ec2 vpc internet gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region }}"
+        state: present
+      register: igw_result
+    - name: Gather information about any VPC route table within VPC
+      amazon.aws.ec2_vpc_route_table_info:
+        region: "{{ region }}"
+        filters:
+          vpc-id: "{{ vpc.vpc.id }}"
+      register: route_info
+    - name: Ansible | Print route info
+      debug:
+        msg: "{{ route_info }}"
+    - name: Create gateway route table
+      amazon.aws.ec2_vpc_route_table:
+        region: "{{ region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        lookup: id
+        route_table_id: "{{ route_info.route_tables[0].id }}"
+        tags:
+          Name: Gateway route table
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw_result.gateway_id }}"
+          - dest: ::/0
+            gateway_id: "{{ igw_result.gateway_id }}"
+    - block:
+        - name: Create lb security group
+          ec2_group:
+            name: "{{ loadbalancer_group }}"
+            description: "Security group for loadbalancer"
+            vpc_id: "{{ vpc.vpc.id }}"
+            region: "{{ region }}"
+            rules:
+              - proto: tcp
+                from_port: 80
+                to_port: 80
+                cidr_ip: 0.0.0.0/0
+              - proto: tcp
+                from_port: 443
+                to_port: 443
+                cidr_ip: 0.0.0.0/0
+            state: present
+          register: lb_security_group
+      when: webserver_port is defined
+    - name: Create security group
+      ec2_group:
+        name: "{{ security_group_name }}"
+        description: "Security group for instances"
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region }}"
+        rules: "{{ security_group_rules_base + security_group_rules }}"
+        state: present
+      register: security_group
+    - name: Create a private zone
+      amazon.aws.route53_zone:
+        zone: "{{ zone }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        vpc_region: "{{ region }}"
+        comment: DNS for wamper lab cantara
+    - name: Gather Facts to check if a similar instance is running
+      ec2_instance_info:
+        region: "{{ region }}"
+        filters:
+          "tag:Name": "{{ item }}"
+      register: ec2_exists
+      with_items: "{{ node_names }}"
+    - name: Display Details
+      debug: var=ec2_exists
+    - set_fact:
+        ip_addresses_old: "{{ ec2_exists.results | selectattr('instances', 'defined') | map(attribute='instances') | flatten | selectattr('state.name','equalto','running') | map(attribute='private_ip_address') | list }}"
+    - name: Route 53 A Record Update Before Launch
+      amazon.aws.route53:
+        state: present
+        zone: "{{ zone }}"
+        private_zone: true
+        record: "{{ service }}.{{ zone }}"
+        type: A
+        ttl: 20
+        value: "{{ ip_addresses_old }}"
+        wait: yes
+        overwrite: yes
+      when: ip_addresses_old | count >= 1
+    - name: Route 53 A Record Deleting Before Launch
+      amazon.aws.route53:
+        state: absent
+        zone: "{{ zone }}"
+        private_zone: true
+        record: "{{ service }}.{{ zone }}"
+        type: A
+        ttl: 20
+        wait: yes
+        overwrite: yes
+      when: ip_addresses_old | count == 0
+    - name: Launch instances
+      ec2_instance:
+        key_name: "{{ key_name }}"
+        security_group: "{{ security_group_name }}"
+        count: 1
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ _latest_ami.image_id }}"
+        region: "{{ region }}"
+        iam_instance_profile: "{{ iam_profile }}"
+        vpc_subnet_id: "{{ subnets.results[index%3].subnet.id }}"
+        network:
+          assign_public_ip: true
+        volumes:
+          - device_name: "{{ _latest_ami.root_device_name }}"
+            ebs:
+              volume_size: 20
+              volume_type: "gp3"
+        metadata_options:
+          http_tokens: "required"
+        tags:
+          Name: "{{ node_names[index] }}"
+          OS: "{{ os_name }}"
+          Arch: "{{ os_arch }}"
+          Manager: "nerthus"
+          Services: "{{ service }}"
+        state: started
+        wait: true
+        user_data: |
+          #!/bin/sh
+          yum -y install python3 python3-pip python3-wheel
+          yes | pip3 install ansible --quiet --exists-action i
+          su -c "ansible-galaxy collection install community.docker > /dev/null" ec2-user
+          
+          cat <<'EOF' > provision.yml
+          {{ lookup('file', 'nodes/'+node_names[index]+'.yml') }}
+          EOF
+          su -c "ansible-playbook provision.yml" ec2-user
+          
+          {{ bootstrap }}
+      vars:
+        _latest_ami: "{{ AMIs.images | sort(attribute='creation_date') | last }}"
+      register: instances
+      async: 3600
+      poll: 0
+      loop: "{{ node_names | flatten(levels=1) }}"
+      loop_control:
+        index_var: index
+      when:
+        - ec2_exists.results[index].instances | count == 0 or ec2_exists.results[index].instances | selectattr('state.name','equalto','running') | list | count == 0
+    - name: Wait for instances launch to finish
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: instances
+      retries: 500
+      delay: 5
+      until: instances.finished
+      loop: "{{instances.results}}"
+      when:
+        - item.finished is defined
+        - item.finished == 0
+    - name: Display New Instances
+      debug: var=instances
+    - set_fact:
+        ip_addresses_new: "{{ instances.results | selectattr('instances', 'defined') | map(attribute='instances') | flatten | map(attribute='private_ip_address') | list }}"
+    - set_fact:
+        ip_addresses: "{{ ip_addresses_new + ip_addresses_old }}"
+    - name: Display IPs
+      debug: var=ip_addresses
+    - name: Route 53 A Record Update After Launch
+      amazon.aws.route53:
+        state: present
+        zone: "{{ zone }}"
+        private_zone: true
+        record: "{{ service }}.{{ zone }}"
+        type: A
+        ttl: 20
+        value: "{{ ip_addresses }}"
+        wait: yes
+        overwrite: yes
+    - set_fact:
+        instances_ids_old: "{{ ec2_exists.results | selectattr('instances', 'defined') | map(attribute='instances') | flatten | selectattr('state.name','equalto','running') | map(attribute='instance_id') | list }}"
+        instances_ids_new: "{{ instances.results | selectattr('instances', 'defined') | map(attribute='instances') | flatten | selectattr('instance_id', 'defined') | map(attribute='instance_id') | list }}"
+    - name: Display instance_ids_old
+      debug:
+        msg: "{{ instances_ids_old }}"
+    - name: Display instance_ids_new
+      debug:
+        msg: "{{ instances_ids_new }}"
+    - block:
+        - set_fact:
+            targets: "{{ targets|default([]) + [{'Id': item, 'Port': webserver_port|int }] }}"
+          with_items:
+            - "{{ instances_ids_new + instances_ids_old }}"
+        - name: Create Application Load Balancer Target Group
+          elb_target_group:
+            name: "{{ target_group_name }}"
+            state: present
+            region: "{{ region }}"
+            protocol: HTTP
+            port: "{{ webserver_port }}"
+            health_check_protocol: HTTP
+            health_check_path: "{{ '/'+service if not is_frontend else '' }}/health"
+            successful_response_codes: "200-299"
+            health_check_interval: 5
+            health_check_timeout: 2
+            healthy_threshold_count: 2
+            unhealthy_threshold_count: 2
+            vpc_id: "{{ vpc.vpc.id }}"
+            targets: "{{ targets }}"
+          register: target_group
+      when: webserver_port is defined

@@ -2,11 +2,11 @@ package systems
 
 import (
 	"gopkg.in/yaml.v3"
-	"os"
+	"io/fs"
 )
 
-func LoadConfig[T any](dir string) (out T, err error) {
-	data, err := os.ReadFile(dir + "/config.yml")
+func LoadConfig[T any](curFS fs.FS) (out T, err error) {
+	data, err := fs.ReadFile(curFS, "config.yml")
 	if err != nil {
 		return
 	}

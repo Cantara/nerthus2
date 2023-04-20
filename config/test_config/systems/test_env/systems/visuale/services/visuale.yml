@@ -1,0 +1,18 @@
+name: Visuale
+service_type: H2A
+health_type: jar
+artifact:
+  id: visuale
+  group: no.cantara.tools
+dependencies:
+  - java_11
+  - local_override
+  - service
+requirements:
+  ram: 1GB
+  disk: 5GB
+  cpu: 1
+  properties_name: local_override.properties
+  webserver_port_key: server.port
+  not_cluster_able: true
+  is_frontend: true

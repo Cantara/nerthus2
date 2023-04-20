@@ -7,8 +7,8 @@ import (
 
 func TestReadRoleDir(t *testing.T) {
 	roles := make(map[string]Role)
-	nerthusFS := os.DirFS("../..")
-	err := ReadRoleDir(nerthusFS, "roles", roles)
+	nerthusFS := os.DirFS("../../config")
+	err := ReadRoleDir(nerthusFS, "builtin_roles", roles)
 	if err != nil {
 		t.Error(err)
 		return
