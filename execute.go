@@ -26,7 +26,8 @@ import (
 
 var baseFS = os.DirFS(".")
 
-func ExecuteEnv(env string) {
+func ExecuteEnv(env string, resultChan chan<- executor.TaskResult) {
+	defer close(resultChan)
 	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
 		log.WithError(err).Fatal("while reading env config")
@@ -80,18 +81,25 @@ func ExecuteEnv(env string) {
 			}
 			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
 			for status := range retChan {
+				if resultChan != nil {
+					resultChan <- status
+				}
 				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
 		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
+			if resultChan != nil {
+				resultChan <- status
+			}
 			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 		}
 	}
 }
 
-func ExecuteSys(env, sys string) {
+func ExecuteSys(env, sys string, resultChan chan<- executor.TaskResult) {
+	defer close(resultChan)
 	if bootstrap {
 		log.Fatal("can't bootstrap a single systemConf", "env", env, "system", sys)
 		//Might want to allow this
@@ -148,18 +156,21 @@ func ExecuteSys(env, sys string) {
 			}
 			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
 			for status := range retChan {
+				resultChan <- status
 				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
 		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
+			resultChan <- status
 			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 		}
 	}
 }
 
-func ExecuteCluster(env, sys, cluster string) {
+func ExecuteCluster(env, sys, cluster string, resultChan chan<- executor.TaskResult) {
+	defer close(resultChan)
 	if bootstrap {
 		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", cluster)
 		//Might want to allow this
@@ -215,12 +226,14 @@ func ExecuteCluster(env, sys, cluster string) {
 			}
 			retChan := executors.ExecuteClusterProvisioning(envConf.Dir, clusterVars, context.Background())
 			for status := range retChan {
+				resultChan <- status
 				log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 			}
 		}
 		systemLoadbalancerVars := config.SystemLoadbalancerVars(envConf, systemConf)
 		retChan := executors.ExecuteLoadbalancerProvisioning(envConf.Dir, systemLoadbalancerVars, context.Background())
 		for status := range retChan {
+			resultChan <- status
 			log.WithError(status.Err).Info("executed", "task", status.Name, "status", status.Status, "msg", status.Message, "cmd", status.Command)
 		}
 	}

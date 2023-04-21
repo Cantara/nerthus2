@@ -16,12 +16,14 @@ import (
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
 	"github.com/cantara/nerthus2/config/properties"
+	"github.com/cantara/nerthus2/executors/ansible/executor"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	jsoniter "github.com/json-iterator/go"
 	"io/fs"
 	"net/http"
 	"os"
@@ -90,7 +92,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		ExecuteEnv(bootstrapEnv)
+		ExecuteEnv(bootstrapEnv, nil)
 		return
 	}
 	if environments.Len() == 0 {
@@ -123,7 +125,12 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		ExecuteEnv(env)
+		resultChan := make(chan executor.TaskResult)
+		go ExecuteEnv(env, resultChan)
+		for result := range resultChan {
+			out, _ := jsoniter.ConfigFastest.Marshal(result)
+			c.SSEvent("result", out)
+		}
 	})
 
 	serv.API.PUT("/config/:env/:sys", func(c *gin.Context) {
@@ -137,7 +144,12 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
-		ExecuteSys(env, sys)
+		resultChan := make(chan executor.TaskResult)
+		go ExecuteSys(env, sys, resultChan)
+		for result := range resultChan {
+			out, _ := jsoniter.ConfigFastest.Marshal(result)
+			c.SSEvent("result", out)
+		}
 	})
 
 	serv.API.PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
@@ -153,7 +165,12 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
-		ExecuteCluster(env, sys, cluster)
+		resultChan := make(chan executor.TaskResult)
+		go ExecuteCluster(env, sys, cluster, resultChan)
+		for result := range resultChan {
+			out, _ := jsoniter.ConfigFastest.Marshal(result)
+			c.SSEvent("result", out)
+		}
 	})
 
 	serv.API.PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
@@ -170,6 +187,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster, "service", service)
 		}
+
 		ExecuteServ(env, sys, cluster, service)
 	})
 
