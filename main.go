@@ -129,7 +129,7 @@ func main() {
 		go ExecuteEnv(env, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", out)
+			c.SSEvent("result", string(out))
 		}
 	})
 
@@ -148,7 +148,7 @@ func main() {
 		go ExecuteSys(env, sys, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", out)
+			c.SSEvent("result", string(out))
 		}
 	})
 
@@ -169,7 +169,7 @@ func main() {
 		go ExecuteCluster(env, sys, cluster, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", out)
+			c.SSEvent("result", string(out))
 		}
 	})
 
