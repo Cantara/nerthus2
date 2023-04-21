@@ -6,10 +6,6 @@ artifact_group: no/cantara/gotools
 artifact:
   id: nerthus2
   group: no/cantara/gotools
-dependencies:
-  - aws
-  - local_override
-  - service
 requirements:
   ram: 1GB
   disk: 5GB
@@ -18,3 +14,5 @@ requirements:
   webserver_port_key: webserver.port
   not_cluster_able: true
   is_frontend: true
+  roles:
+    - aws
