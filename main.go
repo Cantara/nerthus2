@@ -289,7 +289,7 @@ func main() {
 				return
 			}
 			if env.EnvName != c.Params.ByName("name") {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of key"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of env", "name": c.Params.ByName("name"), "env": env})
 				return
 			}
 			err = environments.Set(env.EnvName, env)
