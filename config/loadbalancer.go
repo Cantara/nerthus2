@@ -87,7 +87,7 @@ func SystemLoadbalancerVars(env system.Environment, sys system.System) (vars map
 			cond = Condition{
 				Field: "host-header",
 				Values: []string{
-					fmt.Sprintf("%s-%s.%s", cluster.Name, sys.Name, env.Domain),
+					fmt.Sprintf("%s-%s.%s", sys.Name, cluster.Name, env.Domain),
 				},
 			}
 		}
