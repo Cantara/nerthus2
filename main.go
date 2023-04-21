@@ -126,6 +126,17 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
 		resultChan := make(chan executor.TaskResult)
+		go func() {
+			t := time.NewTicker(time.Second * 30)
+			for {
+				select {
+				case <-c.Request.Context().Done():
+					return
+				case <-t.C:
+					c.SSEvent("ping", nil)
+				}
+			}
+		}()
 		go ExecuteEnv(env, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
@@ -145,6 +156,17 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
 		resultChan := make(chan executor.TaskResult)
+		go func() {
+			t := time.NewTicker(time.Second * 30)
+			for {
+				select {
+				case <-c.Request.Context().Done():
+					return
+				case <-t.C:
+					c.SSEvent("ping", nil)
+				}
+			}
+		}()
 		go ExecuteSys(env, sys, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
@@ -166,6 +188,17 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
 		resultChan := make(chan executor.TaskResult)
+		go func() {
+			t := time.NewTicker(time.Second * 30)
+			for {
+				select {
+				case <-c.Request.Context().Done():
+					return
+				case <-t.C:
+					c.SSEvent("ping", nil)
+				}
+			}
+		}()
 		go ExecuteCluster(env, sys, cluster, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
