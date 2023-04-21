@@ -126,7 +126,7 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
 		resultChan := make(chan executor.TaskResult)
-		go func() {
+		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
 				select {
@@ -136,7 +136,7 @@ func main() {
 					c.SSEvent("ping", nil)
 				}
 			}
-		}()
+		}(c)
 		go ExecuteEnv(env, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
@@ -156,7 +156,7 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
 		resultChan := make(chan executor.TaskResult)
-		go func() {
+		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
 				select {
@@ -166,7 +166,7 @@ func main() {
 					c.SSEvent("ping", nil)
 				}
 			}
-		}()
+		}(c)
 		go ExecuteSys(env, sys, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
@@ -188,7 +188,7 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
 		resultChan := make(chan executor.TaskResult)
-		go func() {
+		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
 				select {
@@ -198,7 +198,7 @@ func main() {
 					c.SSEvent("ping", nil)
 				}
 			}
-		}()
+		}(c)
 		go ExecuteCluster(env, sys, cluster, resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
@@ -278,6 +278,25 @@ func main() {
 					Action: message.AuthorizedKeys,
 					Data:   b,
 				}
+			}
+		})
+
+		auth.PUT("/env/:name", func(c *gin.Context) {
+			var env properties.BootstrapVars
+			err := c.MustBindWith(&env, binding.JSON)
+			if err != nil {
+				log.WithError(err).Debug("while binding json body from key put")
+				return
+			}
+			if env.EnvName != c.Params.ByName("name") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of key"})
+				return
+			}
+			err = environments.Set(env.EnvName, env)
+			if err != nil {
+				log.WithError(err).Error("while storing env in map", "environments", environments.Keys())
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "while storing env in map"})
+				return
 			}
 		})
 	}

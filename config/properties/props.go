@@ -8,9 +8,9 @@ import (
 )
 
 type BootstrapVars struct {
-	GitToken string
-	GitRepo  string
-	EnvName  string
+	GitToken string `json:"git_token"`
+	GitRepo  string `json:"git_repo"`
+	EnvName  string `json:"name"`
 }
 
 func Calculate(serv system.Service) (propertiesName, properties string, err error) {
