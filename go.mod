@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.93.2
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.10
 	github.com/cantara/bragi v0.6.9
-	github.com/cantara/gober v0.15.7
+	github.com/cantara/gober v0.15.8
 	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-git/go-git/v5 v5.6.1

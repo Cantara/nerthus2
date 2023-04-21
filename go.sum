@@ -73,8 +73,8 @@ github.com/bytedance/sonic v1.8.0 h1:ea0Xadu+sHlu7x5O3gKhRpQ1IKiMrSiHttPF0ybECuA
 github.com/bytedance/sonic v1.8.0/go.mod h1:i736AoUSYt75HyZLoJW9ERYxcy6eaN6h4BZXU064P/U=
 github.com/cantara/bragi v0.6.9 h1:mHvHEeYIn1V7w2EOph6140KuV6qP2SZQnJgHDAuw15c=
 github.com/cantara/bragi v0.6.9/go.mod h1:1ynTFXnkiyfGk37HCQs+ZU/av7FjeCt4bCw67+i+a+Y=
-github.com/cantara/gober v0.15.7 h1:joUTS4CFhXf1ocsDT9dOl6f8iQCx5puzHb8XXKMBCjg=
-github.com/cantara/gober v0.15.7/go.mod h1:HZcRFpgBkJPvMtExpZ7awhCRL20XEndS4Vh3umkor5Q=
+github.com/cantara/gober v0.15.8 h1:f6QPbnLJxzZIH/39sP/P9piE9xHLRRkzHLoeHvvipDI=
+github.com/cantara/gober v0.15.8/go.mod h1:5NCVc8S3IZo+l4PxKBcjVsveRnthaDUp1lh6EVuLJc0=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chenzhuoyu/base64x v0.0.0-20211019084208-fb5309c8db06/go.mod h1:DH46F32mSOjUmXrMHnKwZdA8wcEefY7UVqBKYGjpdQY=
 github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 h1:qSGYFH7+jGhDF8vLC+iwCD4WpbV1EBDSzWkJODFLams=
