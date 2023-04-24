@@ -19,7 +19,6 @@ vars:
 tasks:
   - set_fact:
       visuale: "https://{{ visuale_host }}/api/status/{{ env }}/{{ service | capitalize }}/{{ hostname }}?service_tag={{ service_tag }}&service_type={{ service_type }}"
-      nexus_repo: "{{ artifact_release if ('snapshot' not in (version_filter | lower)) else artifact_snapshot }}"
     when:
       - health_type is defined
       - (webserver_port is defined) or (cluster_ports['conn'] is defined)
