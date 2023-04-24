@@ -19,10 +19,14 @@ vars:
 tasks:
   - set_fact:
       visuale: "https://{{ visuale_host }}/api/status/{{ env }}/{{ service | capitalize }}/{{ hostname }}?service_tag={{ service_tag }}&service_type={{ service_type }}"
-      nexus_repo: "{{ artifact_release if ('snapshot' not in (version_filter | to_lower)) else artifact_snapshot }}"
+      nexus_repo: "{{ artifact_release if ('snapshot' not in (version_filter | lower)) else artifact_snapshot }}"
     when:
       - health_type is defined
       - (webserver_port is defined) or (cluster_ports['conn'] is defined)
+  - set_fact:
+      nexus_repo: "{{ artifact_release if ('snapshot' not in (version_filter | lower)) else artifact_snapshot }}"
+    when:
+      - artifact_release is defined
   - set_fact:
       service_exec: "{{ '~/buri -t '+ health_type +' -a '+ artifact_id +' -g '+ artifact_group + ' -f ' + version_filter + ((' -u '+nexus_repo) if nexus_repo is defined else '') +' -r > /dev/null' }}"
     when: service_in_docker is not defined
