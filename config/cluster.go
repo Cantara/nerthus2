@@ -36,6 +36,7 @@ func ClusterProvisioningVars(env system.Environment, sys system.System, cluster 
 		"cluster_name":         cluster.ClusterName,
 		"cluster_ports":        cluster.Expose,
 		"cluster_info":         cluster.ClusterInfo,
+		"routing_method":       sys.RoutingMethod,
 	}, vars)
 	if cluster.HasWebserverPort() {
 		vars["webserver_port"] = cluster.GetWebserverPort()
