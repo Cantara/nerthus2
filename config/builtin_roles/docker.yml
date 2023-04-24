@@ -17,7 +17,6 @@ tasks:
         name: "{{ service }}"
         groups: docker
         append: yes
-      when: service_in_docker is defined
     - name: Starting and Enabling Docker service
       service:
         name: docker
