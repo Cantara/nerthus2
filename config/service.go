@@ -16,6 +16,7 @@ func ServiceProvisioningVars(env system.Environment, sys system.System, cluster 
 	addVars(env.Vars, vars)
 	addVars(sys.Vars, vars)
 	addVars(cluster.Vars, vars)
+	addVars(serv.Vars, vars)
 	addVars(map[string]any{
 		"region":              os.Getenv("aws.region"),
 		"env":                 env.Name,
