@@ -27,7 +27,7 @@ tasks:
       service_exec: "{{ 'buri run '+ health_type +' -u -a '+ artifact_id +' -g '+ artifact_group + ' -f ' + '\"' + version_filter + '\"' + ' > /dev/null' }}"
     when: service_in_docker is not defined
   - set_fact:
-      health_cron: "*/5 * * * * nerthus2-probe-health -d 5m -r '{{ visuale }}' -h 'http://localhost:{{ webserver_port if webserver_port is defined else cluster_ports['conn'] }}{{ '/'+service if not ((is_frontend) or (routing_method == 'host')) else '' }}{{ '' if extra_health_path is not defined else '/'+(extra_health_path or '') }}/health' -a '{{ artifact_id }}' -t '{{ health_type }}' > /dev/null &"
+      health_cron: "*/5 * * * * nerthus2-probe-health -d 5m -r '{{ visuale }}' -h 'http://localhost:{{ webserver_port if webserver_port is defined else cluster_ports['conn'] }}{{ '/'+service if not ((is_frontend | lower == 'true') or (routing_method == 'host')) else '' }}{{ '' if extra_health_path is not defined else '/'+(extra_health_path or '') }}/health' -a '{{ artifact_id }}' -t '{{ health_type }}' > /dev/null &"
     when: visuale is defined
   - block:
     - name: Set service cron file
