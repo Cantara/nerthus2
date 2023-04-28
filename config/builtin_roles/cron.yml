@@ -27,7 +27,7 @@ tasks:
           0 {{ 3+server_number|int }} * * 6 sudo reboot
           */6 * * * * sudo buri install go -a buri -g no/cantara/gotools > /dev/null
           */6 * * * * sudo buri install go -a nerthus2/probe/health -g no/cantara/gotools > /dev/null
-          */6 * * * * buri run go -a nerthus2/probe -g no/cantara/gotools > /dev/null
+          */6 * * * * buri run go -u -a nerthus2/probe -g no/cantara/gotools > /dev/null
         dest: ~/CRON
         mode: 0640
       register: cron
