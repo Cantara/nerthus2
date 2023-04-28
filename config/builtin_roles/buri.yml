@@ -3,7 +3,7 @@ dependencies:
   - role: user
 vars:
   service:
-  buri_base_version: 0.9.7
+  buri_base_version: 0.11.0
   os: linux
 tasks:
   - set_fact:
@@ -17,7 +17,7 @@ tasks:
     when: ansible_facts['os_family'] == "Darwin"
   - name: Check if buri exists
     stat:
-      path: "/home/{{ service }}/buri"
+      path: "/usr/local/bin/{{ service }}/buri"
     become: yes
     become_user: "{{ service }}"
     register: buri
@@ -25,18 +25,14 @@ tasks:
     - name: Download buri
       ansible.builtin.get_url:
         url: "https://mvnrepo.cantara.no/content/repositories/releases/no/cantara/gotools/buri/v{{ buri_base_version }}/buri-v{{ buri_base_version }}-{{ os }}-{{ arch }}"
-        dest: "/home/{{ service }}/"
+        dest: "/usr/local/bin/{{ service }}/"
         mode: u+rwx
       register: buri_new
     - name: Create symbolic link for buri
       file:
         src: "{{ buri_new.dest }}"
-        dest: "/home/{{ service }}/buri"
+        dest: "/usr/local/bin/{{ service }}/buri"
         state: link
-    - name: Create scripts dir
-      file:
-        path: "/home/{{ service }}/scripts"
-        state: directory
     become: yes
     become_user: "{{ service }}"
     when: buri.stat.exists == false
