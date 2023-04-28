@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/exec"
 	"strconv"
 	"sync"
 	"time"
@@ -96,8 +95,7 @@ func AnsibleExecutor(action AnsibleAction) {
 
 	err = pb.Run(context.TODO())
 	if err != nil {
-		log.WithError(err).Error("while running ansible playbook")
-		exec.Command("sudo", "reboot").Run()
+		log.WithError(err).Error("while running ansible playbook", "name", f.Name())
 		return
 	}
 
