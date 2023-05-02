@@ -55,7 +55,7 @@ The information here is not an exhaustive list of all options or modifications t
  * config.yml
     Holds envionment spesific and top level configurations for the environment
 
-### config.yml
+### config.yml (FIXME)
 
  * name: prod
  * domain: "greps.dev"
@@ -88,26 +88,28 @@ Think of these as standalone playbooks that are chained together with a shared p
 
 The services folder contains zero or more local service declerations. [Example](https://github.com/cantara/nerthus2/nerthus.yml)
 
- * name: <string> (Used to identify the service on the nodes)
- * service_type: <[ServiceTypes](https://github.com/cantara/visuale)>
- * health_type: <[HealthTypes](#Health_types)
- * artifact:
-    * id: <string> (maven artifact id)
-    * group: <string> (maven artifact group id)
-    * release: <string> (url to nexus release repo)
-    * snapshot: <string> (url to nexus snapshot repo)
-    * user: <string> (username used for nexus repo auth)
-    * password: <string> (password used for nexus repo auth)
- * requirements:
-    * ram: <size> (WIP)
-    * disk: <size> (WIP)
-    * cpu: <uint> (WIP)
-    * properties_name: <string> (Should deprecate?)
-    * webserver_port_key: <string> (Should deprecate?)
-    * not_cluster_able: <bool> "DEFAULT: true" (Defining weather or not this service can be run in a cluster)
-    * is_frontend: <bool> "DEFAULT: false" (Defines if the service requires loadbalancer routing on base route)
-    * roles: <list <string>> (Defines the roles this service requires)
-    * services: <list <string>> (Defines the services this service requires tight coupling to)
+``` yaml
+name: <string> (Used to identify the service on the nodes)
+service_type: <[ServiceTypes](https://github.com/cantara/visuale)>
+health_type: <[HealthTypes](#Health_types)
+artifact:
+  id: <string> (maven artifact id)
+  group: <string> (maven artifact group id)
+  release: <string> (url to nexus release repo)
+  snapshot: <string> (url to nexus snapshot repo)
+  user: <string> (username used for nexus repo auth)
+  password: <string> (password used for nexus repo auth)
+requirements:
+  ram: <size> (WIP)
+  disk: <size> (WIP)
+  cpu: <uint> (WIP)
+  properties_name: <string> (Should deprecate?)
+  webserver_port_key: <string> (Should deprecate?)
+  not_cluster_able: <bool> "DEFAULT: true" (Defining weather or not this service can be run in a cluster)
+  is_frontend: <bool> "DEFAULT: false" (Defines if the service requires loadbalancer routing on base route)
+  roles: <list <string>> (Defines the roles this service requires)
+  services: <list <string>> (Defines the services this service requires tight coupling to)
+```
 
 ### Systems
 
@@ -132,32 +134,34 @@ Configurations and information related to a tightly coupled system
 
 ###### config.yml
 
- * name: <string> (Used for identifying this system)
- * cidr_base: <ip> "Ex: 10.1.255" (Used to create /24 subnets with the given prefix)
- * routing_method: <[RoutingMethod](#Routing_methods)> (Used to define strategy in the loadbalancer and for health reporting)
- * os_name: <[OSName](#OS_name)>
- * os_arch: <[Arch](#System_architecture)>
- * instance_type: <[InstanceSize](https://aws.amazon.com/ec2/instance-types/)>
- * vars: <map[string]string> (variable map with same rules as [Ansible](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html), these will be used by roles on nodes)
- * clusters: <list<cluster>>
-    * - name: <string> (Used for identifying this cluster)
-        * os_name: <[OSName](#OS_name)>
-        * os_arch: <[Arch](#System_architecture)>
-        * instance_type: <[InstanceSize](https://aws.amazon.com/ec2/instance-types/)>
-        * services:
-            * - name: <string> (Used for identifying this service)
-                * local: <filename> (Local service decleration file)
-                * git: <github_repo> "Ex: github.com/Cantara/nerthus2" (Github repo with service decleration file)
-                * branch: <string> (Branch to find nerhus.yml service decleration)
-                * webserver_port: <uint> (Used to expose service to loadbalancer)
-                * dirs:
-                    * \<relative path within files>: <path from service dir>
-                * files:
-                    * \<path from service dir>:
-                        * mode:  <unix permission> "Ex: 0640"
-                        * content: <string>
-        * override: <map[string]string>
-        * expose: <map[string]uint> (Ports that gets exposed to services that requires this service)
+``` yaml
+name: <string> (Used for identifying this system)
+cidr_base: <ip> "Ex: 10.1.255" (Used to create /24 subnets with the given prefix)
+routing_method: <[RoutingMethod](#Routing_methods)> (Used to define strategy in the loadbalancer and for health reporting)
+os_name: <[OSName](#OS_name)>
+os_arch: <[Arch](#System_architecture)>
+instance_type: <[InstanceSize](https://aws.amazon.com/ec2/instance-types/)>
+vars: <map[string]string> (variable map with same rules as [Ansible](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html), these will be used by roles on nodes)
+clusters: <list<cluster>>
+  - name: <string> (Used for identifying this cluster)
+    os_name: <[OSName](#OS_name)>
+    os_arch: <[Arch](#System_architecture)>
+    instance_type: <[InstanceSize](https://aws.amazon.com/ec2/instance-types/)>
+    services:
+      - name: <string> (Used for identifying this service)
+        local: <filename> (Local service decleration file)
+        git: <github_repo> "Ex: github.com/Cantara/nerthus2" (Github repo with service decleration file)
+        branch: <string> (Branch to find nerhus.yml service decleration)
+        webserver_port: <uint> (Used to expose service to loadbalancer)
+        dirs:
+          \<relative path within files>: <path from service dir>
+        files:
+          \<path from service dir>:
+             mode:  <unix permission> "Ex: 0640"
+             content: <string>
+    override: <map[string]string>
+    expose: <map[string]uint> (Ports that gets exposed to services that requires this service)
+```
 
 ## Future Getting started (as user of existing nerthus provisioned environment)
 
