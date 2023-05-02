@@ -154,9 +154,9 @@ clusters: <list<cluster>>
         branch: <string> (Branch to find nerhus.yml service decleration)
         webserver_port: <uint> (Used to expose service to loadbalancer)
         dirs:
-          \<relative path within files>: <path from service dir>
+          <relative path within files>: <path from service dir>
         files:
-          \<path from service dir>:
+          <path from service dir>:
              mode:  <unix permission> "Ex: 0640"
              content: <string>
     override: <map[string]string>
