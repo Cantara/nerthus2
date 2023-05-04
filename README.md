@@ -57,20 +57,17 @@ The information here is not an exhaustive list of all options or modifications t
 
 ### config.yml (FIXME)
 
- * name: prod
- * domain: "greps.dev"
- * os_name: Amazon Linux 2023
- * os_arch: arm64
- * instance_type: t4g.micro
- * visuale_host: visuale.greps.dev
- * nerthus_host: nerthus.greps.dev
- * vars:
- * public_domain: greps.dev
- * systems:
-    #- jenkins
-    - nerthus
-    - visuale
-    #- nexus
+``` yaml
+name: <string> (Used to identify the envionment)
+domain: <string> (Used for loadbalancer and certs)
+os_name: <[OSName](#OS_name)>
+os_arch: <[Arch](#System_architecture)>
+instance_type: <[InstanceSize](https://aws.amazon.com/ec2/instance-types/)>
+visuale_host: <string> (Used for health reporting)
+nerthus_host: <string> (Used by nerthus probes to access nerthus)
+vars: <map[string]string> (variable map with same rules as [Ansible](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html), these will be used by roles on nodes)
+systems: <list<string>>
+```
 
 ### Ansible
 
@@ -156,7 +153,7 @@ clusters: <list<cluster>>
         dirs:
           <relative path within files>: <path from service dir>
         files:
-          <path from service dir>:
+          \<path from service dir>:
              mode:  <unix permission> "Ex: 0640"
              content: <string>
     override: <map[string]string>
