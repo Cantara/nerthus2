@@ -160,6 +160,24 @@ clusters: <list<cluster>>
     expose: <map[string]uint> (Ports that gets exposed to services that requires this service)
 ```
 
+## Nerthus-cli
+
+The most important commands will be adding a certificate to a nerthus instance and accessing a node.
+
+### Add ssh key
+
+To add a key to all servers use the following command.
+
+`nerthus-cli key add <profile> -o <your-name>`
+
+This will add your `.ssh/.id_rsa.pub` to your list of keys and verify that all keys on all nodes are up to date.
+
+### SSH
+
+The base command for ssh is as follows. It will get the current ip for the requested node.
+
+`nerthus-cli ssh <profile> <node-name>`
+
 ## Future Getting started (as user of existing nerthus provisioned environment)
 
 * [ ] Log on to https://nerthus.lab.cantara.no using the GitHub authentication method
