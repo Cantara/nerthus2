@@ -106,7 +106,6 @@ func main() {
 			return
 		}
 	case mssqldbST:
-		version = "unknown"
 		sqlConn, err = sql.Open("mssql", fmt.Sprintf("sqlserver://sa:mssql1Ipw@%s?encrypt=false&TrustServerCertificate=true", healthURL.Host))
 		if err != nil {
 			log.AddError(err).Fatal("while connecting to server")
@@ -114,8 +113,8 @@ func main() {
 		}
 		version, err = MSSQLVersion(sqlConn)
 		if err != nil {
-			log.AddError(err).Fatal("while getting mssql server version")
-			return
+			log.AddError(err).Error("while getting mssql server version")
+			version = "unknown"
 		}
 
 	default:
