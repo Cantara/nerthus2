@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+func MSSQLVersion(conn *sql.DB) (version string, err error) {
+	row := conn.QueryRow(`SELECT SERVERPROPERTY('productversion')`)
+	err = row.Scan(&version)
+	if err != nil {
+		return
+	}
+	return
+}
 func MSSQLStatus(conn *sql.DB) (out baseStatus, err error) {
 	row := conn.QueryRow(`
 		SELECT
