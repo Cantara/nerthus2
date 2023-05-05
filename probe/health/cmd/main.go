@@ -107,7 +107,7 @@ func main() {
 		}
 	case mssqldbST:
 		version = "unknown"
-		sqlConn, err = sql.Open("mssql", fmt.Sprintf("sqlserver://%s?encrypt=false&TrustServerCertificate=true", healthURL.Host))
+		sqlConn, err = sql.Open("mssql", fmt.Sprintf("sqlserver://sa@%s?encrypt=false&TrustServerCertificate=true", healthURL.Host))
 		if err != nil {
 			return
 		}
