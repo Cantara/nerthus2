@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -78,7 +79,8 @@ func main() {
 	serviceTypeSelected := serviceTypeFromString(serviceTypeSelectedString)
 	endTime := time.Now().Add(duration)
 	t := time.NewTicker(interval)
-	var client *mongo.Client
+	var mongoClient *mongo.Client
+	var sqlConn *sql.DB
 	switch serviceTypeSelected {
 	case eventstoreST:
 		version = "22.10"
@@ -98,9 +100,15 @@ func main() {
 		healthURL.Scheme = "mongodb"
 		serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 		opts := options.Client().ApplyURI(healthURL.String()).SetServerAPIOptions(serverAPI)
-		client, err = mongo.Connect(context.Background(), opts)
+		mongoClient, err = mongo.Connect(context.Background(), opts)
 		if err != nil {
 			log.AddError(err).Fatal("while connecting to server")
+			return
+		}
+	case mssqldbST:
+		version = "unknown"
+		sqlConn, err = sql.Open("mssql", fmt.Sprintf("sqlserver://%s;encrypt=false", healthURL.Host))
+		if err != nil {
 			return
 		}
 	default:
@@ -118,7 +126,9 @@ func main() {
 			case goST:
 				status, err = DefaultServiceStatus(healthURL)
 			case mongodbST:
-				status, err = MongodbStatus(healthURL, client)
+				status, err = MongodbStatus(healthURL, mongoClient)
+			case mssqldbST:
+				status, err = MSSQLStatus(sqlConn)
 			default:
 				status, err = DefaultWebsiteStatus(healthURL, serviceTypeSelected)
 			}
@@ -321,6 +331,7 @@ const (
 	goST         = serviceType("go")
 	eventstoreST = serviceType("eventstore")
 	mongodbST    = serviceType("mongodb")
+	mssqldbST    = serviceType("mssqldb")
 )
 
 type serviceType string
@@ -347,6 +358,10 @@ func serviceTypeFromString(s string) (st serviceType) {
 		st = mongodbST
 	case "mongodb":
 		st = mongodbST
+	case "mssql":
+		st = mssqldbST
+	case "mssqldb":
+		st = mssqldbST
 	default:
 		//err = errors.New("unsuported service type")
 		log.Info("service type not found. treating as website / frontend") //Could be smart to return to error and use tag website and artifact for name of website
