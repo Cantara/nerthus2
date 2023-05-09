@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/apenella/go-ansible v1.1.7
 	github.com/aws/aws-sdk-go-v2 v1.18.0
-	github.com/aws/aws-sdk-go-v2/config v1.18.24
+	github.com/aws/aws-sdk-go-v2/config v1.18.25
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.97.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.12
 	github.com/cantara/bragi v0.6.9
@@ -28,7 +28,7 @@ require (
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/apenella/go-common-utils/data v0.0.0-20210528133155-34ba915e28c8 // indirect
 	github.com/apenella/go-common-utils/error v0.0.0-20210528133155-34ba915e28c8 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.23 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.24 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.27 // indirect
