@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.20.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.34
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.112.0
-	github.com/aws/aws-sdk-go-v2/service/iam v1.22.2
+	github.com/aws/aws-sdk-go-v2/service/iam v1.22.3
 	github.com/cantara/bragi v0.6.9
 	github.com/cantara/gober v0.15.8
 	github.com/gabriel-vasile/mimetype v1.4.2
