@@ -4,7 +4,7 @@ def release = false
 pipeline {
     agent any
     tools {
-        go 'Go 1.20'
+        go 'Go 1.21'
         maven 'Mvn'
     }
     environment {

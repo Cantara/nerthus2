@@ -1,14 +1,15 @@
 package config
 
 import (
+	"os"
+	"strconv"
+	"strings"
+
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/config/readers/dir"
 	"github.com/cantara/nerthus2/config/readers/file"
 	"github.com/cantara/nerthus2/system"
-	"os"
-	"strconv"
-	"strings"
 )
 
 func ServiceProvisioningVars(env system.Environment, sys system.System, cluster system.Cluster, serv system.Service) (vars map[string]any) {

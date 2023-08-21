@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
+
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/executors"
 	"github.com/cantara/nerthus2/executors/ansible/executor"
 	"github.com/cantara/nerthus2/executors/ansible/generators"
 	"github.com/cantara/nerthus2/message"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 /*

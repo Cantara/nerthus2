@@ -7,6 +7,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
+	"net/http"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/gober/eventmap"
 	"github.com/cantara/gober/stream"
@@ -24,14 +33,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	jsoniter "github.com/json-iterator/go"
-	"io/fs"
-	"net/http"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 //go:embed bootstrap

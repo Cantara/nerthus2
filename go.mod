@@ -1,6 +1,6 @@
 module github.com/cantara/nerthus2
 
-go 1.20
+go 1.21
 
 require (
 	github.com/apenella/go-ansible v1.1.7
@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.35
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.113.1
 	github.com/aws/aws-sdk-go-v2/service/iam v1.22.4
-	github.com/cantara/bragi v0.6.9
+	github.com/cantara/bragi v0.7.1
 	github.com/cantara/gober v0.15.8
 	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/gin-gonic/gin v1.9.0
