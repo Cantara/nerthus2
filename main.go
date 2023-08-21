@@ -282,6 +282,10 @@ func main() {
 			}
 		})
 
+		auth.GET("/env", func(c *gin.Context) {
+			c.JSON(http.StatusOK, environments.Keys())
+		})
+
 		auth.PUT("/env/:name", func(c *gin.Context) {
 			var env properties.BootstrapVars
 			err := c.MustBindWith(&env, binding.JSON)
