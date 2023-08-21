@@ -14,7 +14,7 @@ This should be a very sparse issue, but can be especially precent when there has
 #### Install the eXOReaction nexus package manager and nerthus-cli for all users
 
 ``` bash
-sudo curl https://github.com/cantara/nerthus2/install_cli.sh -sSf | sh
+sudo curl https://raw.githubusercontent.com/Cantara/nerthus2/main/install_cli.sh -sSf | sh
 ```
 
 #### Add crontab entries for [brui](https://github.com/cantara/buri) and nerthus-cli
@@ -22,7 +22,7 @@ sudo curl https://github.com/cantara/nerthus2/install_cli.sh -sSf | sh
 This currently requires `sudo` without password to update packages. There is currently no support for local user insallations. Look at [brui](https://github.com/cantara/buri) for the most up to date information for the most up to date information.
 
 ``` bash
-curl https://github.com/cantara/nerthus2/add_cron.sh -sSf | sh
+curl https://raw.githubusercontent.com/Cantara/nerthus2/main/add_cron.sh -sSf | sh
 ```
 
 #### Add config (Remove me)
