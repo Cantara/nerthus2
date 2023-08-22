@@ -35,7 +35,7 @@ tasks:
         content: |
           MAILTO=""
           PATH=/bin:/usr/bin:/usr/local/bin
-          {{ ('*/6 * * * * ' + service_exec) if service_exec is defined }}
+          {{ (server_number|int % 3 * 2+'/6 * * * * ' + service_exec) if service_exec is defined }}
           {{ health_cron if health_cron is defined }}
           {{ extra_service_cron if extra_service_cron is defined }}
         dest: "/home/{{ service }}/CRON"
