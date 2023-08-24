@@ -77,6 +77,8 @@ github.com/bytedance/sonic v1.8.0 h1:ea0Xadu+sHlu7x5O3gKhRpQ1IKiMrSiHttPF0ybECuA
 github.com/bytedance/sonic v1.8.0/go.mod h1:i736AoUSYt75HyZLoJW9ERYxcy6eaN6h4BZXU064P/U=
 github.com/cantara/bragi v0.7.1 h1:Kf09cw56kePRvyTSPmTsl6xTC7To8F8+VStO5PoM6Ng=
 github.com/cantara/bragi v0.7.1/go.mod h1:btpJS4I5xGUohgnno50o8XD1qysPjozSrUzDjWr2W6Q=
+github.com/cantara/bragi v0.7.2 h1:jKDxuRSessMqYUjIU+mKr9FQ5RwhUiIGVWK3FdbyTD4=
+github.com/cantara/bragi v0.7.2/go.mod h1:btpJS4I5xGUohgnno50o8XD1qysPjozSrUzDjWr2W6Q=
 github.com/cantara/gober v0.15.8 h1:f6QPbnLJxzZIH/39sP/P9piE9xHLRRkzHLoeHvvipDI=
 github.com/cantara/gober v0.15.8/go.mod h1:5NCVc8S3IZo+l4PxKBcjVsveRnthaDUp1lh6EVuLJc0=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
