@@ -6,7 +6,7 @@ require (
 	github.com/apenella/go-ansible v1.1.7
 	github.com/aws/aws-sdk-go-v2 v1.21.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.37
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.114.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.115.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.22.5
 	github.com/cantara/bragi v0.7.2
 	github.com/cantara/gober v0.15.8
