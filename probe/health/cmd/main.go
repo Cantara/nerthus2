@@ -239,6 +239,7 @@ func DefaultWebsiteStatus(healthURL *url.URL, st serviceType) (out baseStatus, e
 }
 
 func Put[I, O any](uri *url.URL, data *I, out *O) (err error) {
+	return
 	jsonValue, err := json.Marshal(data)
 	if err != nil {
 		return
