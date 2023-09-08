@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	log "github.com/cantara/bragi"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	log "github.com/cantara/bragi"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	//jsoniter "github.com/json-iterator/go"
 	"go/types"
@@ -239,7 +240,6 @@ func DefaultWebsiteStatus(healthURL *url.URL, st serviceType) (out baseStatus, e
 }
 
 func Put[I, O any](uri *url.URL, data *I, out *O) (err error) {
-	return
 	jsonValue, err := json.Marshal(data)
 	if err != nil {
 		return
