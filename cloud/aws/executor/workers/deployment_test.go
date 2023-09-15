@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -36,6 +37,10 @@ func TestDeployment(t *testing.T) {
 			e.Run()
 		}()
 	} // imageName, serviceType, path, network, cluster, system, env, size, nerthus, visuale
-	Deployment(3, 13030, ami.ARM64, "Amazon Linux 2023", "H2A", "/nerthue", "172.31.100.0/24", "nerthus", "nerthus", "test", "t4g.nano", "nerthus.test.exoreaction.dev", "visuale.test.exoreaction.dev", "exoreaction.dev", &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg))
-	wg.Wait()
+	names := make([]string, 3)
+	for i := range names {
+		names[i] = fmt.Sprintf("%s-%s-%d", "test", "nerthus", i+1)
+	}
+	Deployment(names, 13030, ami.ARM64, "Amazon Linux 2023", "H2A", "/nerthue", "172.31.100.0/24", "nerthus", "nerthus", "test", "t4g.nano", "nerthus.test.exoreaction.dev", "visuale.test.exoreaction.dev", "exoreaction.dev", &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg))
+	//wg.Wait()
 }
