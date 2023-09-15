@@ -128,6 +128,7 @@ func System(env system.Environment, systemDir string) (config system.System, err
 	if config.Domain == "" {
 		config.Domain = env.Domain
 	}
+	config.CIDR = config.CIDR + "/24"
 	return
 }
 
