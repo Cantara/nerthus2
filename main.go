@@ -16,6 +16,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/acm"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/gober/eventmap"
 	"github.com/cantara/gober/stream"
@@ -24,8 +29,8 @@ import (
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
+	"github.com/cantara/nerthus2/cloud/aws/executor"
 	"github.com/cantara/nerthus2/config/properties"
-	"github.com/cantara/nerthus2/executors/ansible/executor"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -80,6 +85,16 @@ func main() {
 	environments, err := eventmap.Init[properties.BootstrapVars](envStream, "environment", "v0.0.1",
 		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx)
 
+	// Load the Shared AWS Configuration (~/.aws/config)
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.WithError(err).Fatal("while getting aws config")
+	}
+	e := executor.NewExecutor()
+	for i := 0; i < 100; i++ {
+		go e.Run()
+	}
+
 	if bootstrap {
 		err = environments.Set(bootstrapEnv, properties.BootstrapVars{
 			GitToken: gitToken,
@@ -93,7 +108,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		ExecuteEnv(bootstrapEnv, nil)
+		ExecuteEnv(bootstrapEnv, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), nil)
 		return
 	}
 	if environments.Len() == 0 {
@@ -126,7 +141,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		resultChan := make(chan executor.TaskResult)
+		resultChan := make(chan string)
 		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
@@ -138,7 +153,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteEnv(env, resultChan)
+		go ExecuteEnv(env, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))
@@ -156,7 +171,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
-		resultChan := make(chan executor.TaskResult)
+		resultChan := make(chan string)
 		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
@@ -168,7 +183,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteSys(env, sys, resultChan)
+		go ExecuteSys(env, sys, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))
@@ -188,7 +203,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
-		resultChan := make(chan executor.TaskResult)
+		resultChan := make(chan string)
 		go func(c *gin.Context) {
 			t := time.NewTicker(time.Second * 30)
 			for {
@@ -200,7 +215,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteCluster(env, sys, cluster, resultChan)
+		go ExecuteCluster(env, sys, cluster, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))

@@ -2,12 +2,6 @@ package systems
 
 import (
 	"fmt"
-	log "github.com/cantara/bragi/sbragi"
-	"github.com/cantara/nerthus2/executors/ansible"
-	"github.com/cantara/nerthus2/system"
-	"github.com/cantara/nerthus2/system/service"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"net/http"
@@ -16,6 +10,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/nerthus2/cloud/aws/ami"
+	"github.com/cantara/nerthus2/executors/ansible"
+	"github.com/cantara/nerthus2/system"
+	"github.com/cantara/nerthus2/system/service"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 var builtinRoleCash = make(map[string]ansible.Role)
@@ -143,6 +145,7 @@ func clusterBase(env system.Environment, sys system.System, cluster *system.Clus
 	if cluster.OSArch == "" {
 		cluster.OSArch = sys.OSArch
 	}
+	cluster.Arch, err = ami.StringToArch(cluster.OSArch)
 	if cluster.InstanceType == "" {
 		cluster.InstanceType = sys.InstanceType
 	}

@@ -1,10 +1,12 @@
 package system
 
 import (
+	"io/fs"
+
+	"github.com/cantara/nerthus2/cloud/aws/ami"
 	"github.com/cantara/nerthus2/config/readers/file"
 	"github.com/cantara/nerthus2/executors/ansible"
 	"github.com/cantara/nerthus2/system/service"
-	"io/fs"
 )
 
 type Environment struct {
@@ -58,6 +60,7 @@ type Cluster struct {
 	IAM           string            `yaml:"iam"`
 	OSName        string            `yaml:"os_name"`
 	OSArch        string            `yaml:"os_arch"`
+	Arch          ami.Arch          `yaml:",omitempty"`
 	InstanceType  string            `yaml:"instance_type"`
 	Services      []*Service        `yaml:"services"`
 	Vars          Vars              `yaml:"vars"`
