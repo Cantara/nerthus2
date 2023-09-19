@@ -15,17 +15,17 @@ type Requireing interface {
 
 type data struct {
 	c       *ec2.Client
-	cluster string
+	system  string
 	name    string
 	network string
 	rs      []Requireing
 }
 
-func Executor(env, cluster, network string, rs []Requireing, c *ec2.Client) data {
+func Executor(env, system, network string, rs []Requireing, c *ec2.Client) data {
 	return data{
 		c:       c,
-		cluster: cluster,
-		name:    env + "-" + cluster + "-vpc",
+		system:  system,
+		name:    env + "-" + system + "-vpc",
 		network: network,
 		rs:      rs,
 	}

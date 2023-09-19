@@ -68,7 +68,7 @@ func DeployInfra(nodes []string, arch ami.Arch, imageName, network, cluster, sys
 		}, elb)
 	*/
 
-	e.Add(vpc.Executor(env, cluster, network, []vpc.Requireing{
+	e.Add(vpc.Executor(env, system, network, []vpc.Requireing{
 		lbsge,
 		sne,
 		sge,
