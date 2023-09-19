@@ -136,11 +136,9 @@ func Create(nodeNum int, nodeNames []string, cluster, system, env, iType, subnet
 		Env:       env,
 		NUrl:      nerthusUrl,
 		Hostname:  nodeNames[nodeNum],
-		IsFront:   true, //Change
 		NodeNames: nodeNames,
 		OS:        "linux",
 		Arch:      image.Arch.String(),
-		RouteMeth: "host", //Change
 		ServNum:   nodeNum,
 		User:      image.Username(),
 		System:    system,
@@ -342,14 +340,12 @@ cat <<'EOF' > provision.yml
       nerthus.url={{.NUrl}}
       hostname={{.Hostname}}
     hostname: {{.Hostname}}
-    is_frontend: {{.IsFront}}
     nerthus_host: {{.NUrl}}
     node_names:
 {{- range $i, $n := .NodeNames }}
     - {{.}}{{end}}
     os: {{.OS}}
     os_arch: {{.Arch}}
-    routing_method: {{.RouteMeth}}
     server_number: {{.ServNum}}
     service: {{.User}}
     system: {{.System}}
@@ -457,16 +453,13 @@ type ServerData struct {
 	Env       string
 	NUrl      string
 	Hostname  string
-	IsFront   bool
 	NodeNames []string
 	OS        string
 	Arch      string
-	RouteMeth string
 	ServNum   int
 	User      string
 	System    string
 	VUrl      string
-	Webserver int
 }
 
 func GenServerProv(data ServerData) string {

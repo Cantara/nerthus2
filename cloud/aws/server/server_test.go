@@ -47,17 +47,13 @@ func TestGenServerProv(t *testing.T) {
 		Env:       "test",
 		NUrl:      "nerthus.test.exoreaction.dev",
 		Hostname:  "test-nerthus-1",
-		IsFront:   true,
 		NodeNames: []string{"test-nerthus-1", "test-nerthus-2", "test-nerthus-3"},
 		OS:        "linux",
 		Arch:      "arm64",
-		RouteMeth: "host",
 		ServNum:   0,
 		User:      "ec2-user",
-		VST:       "H2A",
 		System:    "nerthus",
 		VUrl:      "visuale.test.exoreaction.dev",
-		Webserver: 13030,
 	}))
 	fmt.Println("ProvScript: ", string(b), "\nErr: ", err)
 }
