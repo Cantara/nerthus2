@@ -18,18 +18,20 @@ type Requireing interface {
 type data struct {
 	c       *ec2.Client
 	env     string
+	system  string
 	cluster string
 	name    string
 	v       vpc.VPC
 	rs      []Requireing
 }
 
-func Executor(env, cluster string, rs []Requireing, c *ec2.Client) *data {
+func Executor(env, system, cluster string, rs []Requireing, c *ec2.Client) *data {
 	return &data{
 		c:       c,
 		env:     env,
+		system:  system,
 		cluster: cluster,
-		name:    fmt.Sprintf("%s-%s-sg", env, cluster),
+		name:    fmt.Sprintf("%s-%s-%s-sg", env, system, cluster),
 		rs:      rs,
 	}
 }

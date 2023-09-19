@@ -15,20 +15,20 @@ type Requireing interface {
 }
 
 type data struct {
-	c       *ec2.Client
-	env     string
-	cluster string
-	name    string
-	rs      []Requireing
+	c      *ec2.Client
+	env    string
+	system string
+	name   string
+	rs     []Requireing
 }
 
-func Executor(env, cluster string, rs []Requireing, c *ec2.Client) data {
+func Executor(env, system string, rs []Requireing, c *ec2.Client) data {
 	return data{
-		c:       c,
-		env:     env,
-		cluster: cluster,
-		name:    fmt.Sprintf("%s-%s-key", env, cluster),
-		rs:      rs,
+		c:      c,
+		env:    env,
+		system: system,
+		name:   fmt.Sprintf("%s-%s-key", env, system),
+		rs:     rs,
 	}
 }
 

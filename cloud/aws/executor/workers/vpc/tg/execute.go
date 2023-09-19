@@ -18,6 +18,7 @@ type Requireing interface {
 type data struct {
 	c       *elbv2.Client
 	env     string
+	system  string
 	cluster string
 	name    string
 	path    string
@@ -26,12 +27,13 @@ type data struct {
 	rs      []Requireing
 }
 
-func Executor(env, cluster, path string, port int, rs []Requireing, c *elbv2.Client) *data {
+func Executor(env, system, cluster, path string, port int, rs []Requireing, c *elbv2.Client) *data {
 	return &data{
 		c:       c,
 		env:     env,
+		system:  system,
 		cluster: cluster,
-		name:    fmt.Sprintf("%s-%s-tg", env, cluster),
+		name:    fmt.Sprintf("%s-%s-%s-tg", env, system, cluster), //This will be to long
 		path:    path,
 		port:    port,
 		rs:      rs,

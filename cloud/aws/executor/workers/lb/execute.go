@@ -18,7 +18,7 @@ type Requireing interface {
 
 type data struct {
 	c       *elbv2.Client
-	cluster string
+	system  string
 	name    string
 	env     string
 	subnets []string
@@ -28,13 +28,13 @@ type data struct {
 	l *sync.Mutex
 }
 
-func Executor(env, cluster string, rs []Requireing, c *elbv2.Client) *data {
+func Executor(env, system string, rs []Requireing, c *elbv2.Client) *data {
 	return &data{
-		c:       c,
-		name:    fmt.Sprintf("%s-%s-lb", env, cluster),
-		cluster: cluster,
-		env:     env,
-		rs:      rs,
+		c:      c,
+		name:   fmt.Sprintf("%s-%s-lb", env, system),
+		system: system,
+		env:    env,
+		rs:     rs,
 
 		l: &sync.Mutex{},
 	}

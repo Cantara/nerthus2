@@ -39,6 +39,7 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 			log.Info("skipping systemConf while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name)
 			continue
 		}
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
 		for _, cluster := range systemConf.Clusters {
 			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
 				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
@@ -47,7 +48,7 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
 			//nodes, port, arch, imageName, serviceType, path, network, cluster, system, env, size, nerthus, visuale, domain
-			workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
+			//workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			// , *service.WebserverPort, service.ServiceInfo.ServiceType, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Name))
 			for _, service := range cluster.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
@@ -121,6 +122,7 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 		if strings.ToLower(systemConf.Name) != sys {
 			continue
 		}
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
 		for _, cluster := range systemConf.Clusters {
 			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
 				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
@@ -128,7 +130,7 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 			}
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
-			workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
+			//workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			for _, service := range cluster.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
 				for nodeNum, nodeName := range cluster.NodeNames {
@@ -197,13 +199,15 @@ func ExecuteCluster(env, sys, cluster string, e workers.Executor, e2 *ec2.Client
 		if strings.ToLower(systemConf.Name) != sys {
 			continue
 		}
+		//TODO: remove all clusters that are not relevant before executing
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
 		for _, clusterConf := range systemConf.Clusters {
 			if strings.ToLower(clusterConf.Name) != cluster {
 				continue
 			}
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", clusterConf.Name, "overrides", clusterConf.Override)
 
-			workers.DeployInfra(clusterConf.NodeNames, clusterConf.Arch, clusterConf.OSName, systemConf.CIDR, clusterConf.Name, systemConf.Name, envConf.Name, clusterConf.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
+			//workers.DeployInfra(clusterConf.NodeNames, clusterConf.Arch, clusterConf.OSName, systemConf.CIDR, clusterConf.Name, systemConf.Name, envConf.Name, clusterConf.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			for _, service := range clusterConf.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, *service)
 				for nodeNum, nodeName := range clusterConf.NodeNames {
