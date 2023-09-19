@@ -42,7 +42,7 @@ func Deployment(nodes []string, port int, arch ami.Arch, imageName, serviceType,
 		le,
 	}, elb)
 
-	ne := node.Executor(nodes, port, serviceType, cluster, system, env, size, nerthus, visuale, []node.Requireing{
+	ne := node.Executor(nodes, cluster, system, env, size, nerthus, visuale, []node.Requireing{
 		te,
 	}, e2)
 	e.Add(key.Executor(env, cluster, []key.Requireing{

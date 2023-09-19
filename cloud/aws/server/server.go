@@ -110,7 +110,7 @@ func NameAvailable(name string, e2 *ec2.Client) (available bool, err error) {
 	return
 }
 
-func Create(nodeNum int, nodeNames []string, port int, vst, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
+func Create(nodeNum int, nodeNames []string, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
 	s, err := GetServer(nodeNames[nodeNum], e2)
 	if err != nil {
 		if !errors.Is(err, ErrServerNotFound) {
@@ -143,10 +143,8 @@ func Create(nodeNum int, nodeNames []string, port int, vst, cluster, system, env
 		RouteMeth: "host", //Change
 		ServNum:   nodeNum,
 		User:      image.Username(),
-		VST:       vst,
 		System:    system,
 		VUrl:      visualeUrl,
-		Webserver: port,
 	})
 	b, err := base64.RawStdEncoding.DecodeString(ProvScript)
 	fmt.Println("ProvScript: ", string(b))
@@ -354,10 +352,8 @@ cat <<'EOF' > provision.yml
     routing_method: {{.RouteMeth}}
     server_number: {{.ServNum}}
     service: {{.User}}
-    service_tag: {{.VST}}
     system: {{.System}}
-    visuale_host: {{.VUrl}}
-    webserver_port: {{.Webserver}}`))
+    visuale_host: {{.VUrl}}`))
 
 var serverEnd = `  tasks:
   - ansible.builtin.user:
@@ -468,7 +464,6 @@ type ServerData struct {
 	RouteMeth string
 	ServNum   int
 	User      string
-	VST       string
 	System    string
 	VUrl      string
 	Webserver int

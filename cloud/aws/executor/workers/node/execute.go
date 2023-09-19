@@ -18,44 +18,34 @@ type Requireing interface {
 }
 
 type data struct {
-	c           *ec2.Client
-	cluster     string
-	names       []string
-	port        int
-	serviceType string
-	system      string
-	env         string
-	size        string
-	nerthus     string
-	visuale     string
-	subnets     []string
-	img         *ami.Image
-	key         *key.Key
-	sg          *security.Group
-	rs          []Requireing
+	c       *ec2.Client
+	cluster string
+	names   []string
+	system  string
+	env     string
+	size    string
+	nerthus string
+	visuale string
+	subnets []string
+	img     *ami.Image
+	key     *key.Key
+	sg      *security.Group
+	rs      []Requireing
 
 	l *sync.Mutex
 }
 
-func Executor(nodes []string, port int, serviceType, cluster, system, env, size, nerthus, visuale string, rs []Requireing, c *ec2.Client) *data {
-	/*
-		names := make([]string, numNodes)
-		for i := range names {
-			names[i] = fmt.Sprintf("%s-%s-%d", env, cluster, i+1)
-		}
-	*/
+func Executor(nodes []string, cluster, system, env, size, nerthus, visuale string, rs []Requireing, c *ec2.Client) *data {
 	return &data{
-		c:           c,
-		names:       nodes,
-		cluster:     cluster,
-		port:        port,
-		system:      system,
-		serviceType: serviceType,
-		env:         env,
-		size:        size,
-		nerthus:     nerthus,
-		visuale:     visuale,
-		rs:          rs,
+		c:       c,
+		names:   nodes,
+		cluster: cluster,
+		system:  system,
+		env:     env,
+		size:    size,
+		nerthus: nerthus,
+		visuale: visuale,
+		rs:      rs,
 
 		l: &sync.Mutex{},
 	}
@@ -66,9 +56,9 @@ func (d *data) Execute(c chan<- executor.Func) {
 	nodes := make([]server.Server, len(d.names))
 	ids := make([]string, len(d.names))
 	for i := range d.names {
-		s, err := server.Create(i, d.names, d.port, d.serviceType, d.cluster, d.system, d.env, d.size, d.subnets[i], d.nerthus, d.visuale, *d.img, *d.key, *d.sg, d.c)
+		s, err := server.Create(i, d.names, d.cluster, d.system, d.env, d.size, d.subnets[i], d.nerthus, d.visuale, *d.img, *d.key, *d.sg, d.c)
 		if err != nil {
-			log.WithError(err).Error("while creating nodes")
+			log.WithError(err).Error("while creating nodes", "env", d.env, "system", d.system, "cluster", d.cluster, "image", d.img.HName, "subnets", d.subnets, "node", i)
 			c <- d.Execute
 			return
 		}
