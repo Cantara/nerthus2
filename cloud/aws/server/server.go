@@ -144,8 +144,6 @@ func Create(nodeNum int, nodeNames []string, cluster, system, env, iType, subnet
 		System:    system,
 		VUrl:      visualeUrl,
 	})
-	b, err := base64.RawStdEncoding.DecodeString(ProvScript)
-	fmt.Println("ProvScript: ", string(b))
 	result, err := e2.RunInstances(context.Background(), &ec2.RunInstancesInput{
 		ImageId:      &s.ami.Id,
 		InstanceType: ec2types.InstanceType(s.Type), //"t3.micro",
