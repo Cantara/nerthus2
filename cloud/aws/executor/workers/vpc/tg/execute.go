@@ -41,7 +41,18 @@ func Executor(env, system, cluster, path string, port int, rs []Requireing, c *e
 }
 
 func (d *data) Execute(c chan<- executor.Func) {
-	tg, err := loadbalancer.CreateTargetGroup(d.v.Id, d.name, d.path, d.port, d.c)
+	tg, err := loadbalancer.GetTargetGroup(d.name, d.path, d.port, d.c)
+	if err == nil {
+		for _, r := range d.rs {
+			f := r.TG(tg)
+			if f == nil {
+				continue
+			}
+			c <- f
+		}
+		return
+	}
+	tg, err = loadbalancer.CreateTargetGroup(d.v.Id, d.name, d.path, d.port, d.c)
 	if err != nil {
 		log.WithError(err).Error("while creating new target group")
 		c <- d.Execute
