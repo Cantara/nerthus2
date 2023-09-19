@@ -156,8 +156,8 @@ func clusterBase(env system.Environment, sys system.System, cluster *system.Clus
 	if cluster.TargetGroup == "" && cluster.HasWebserverPort() {
 		cluster.TargetGroup = fmt.Sprintf("%s%s-tg", sys.Scope, extra)
 	}
-	if cluster.ClusterName == "" {
-		cluster.ClusterName = fmt.Sprintf("%s.%s", cluster.Name, sys.Zone)
+	if cluster.DNSRoot == "" {
+		cluster.DNSRoot = fmt.Sprintf("%s.%s", cluster.Name, sys.Zone)
 	}
 	cluster.ClusterInfo = map[string]system.ClusterInfo{}
 	cluster.Roles = map[string]ansible.Role{}
@@ -275,7 +275,7 @@ func Cluster(env system.Environment, sys system.System, cluster *system.Cluster)
 			}
 			cluster.SecurityGroupRules = append(cluster.SecurityGroupRules, sgrs...)
 			fromServ.ClusterInfo[cluster.Name] = system.ClusterInfo{
-				Name:  cluster.ClusterName,
+				Name:  cluster.DNSRoot,
 				Ports: cluster.Expose,
 			}
 		}
