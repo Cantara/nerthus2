@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	amzaws "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -94,6 +95,9 @@ func main() {
 	for i := 0; i < 100; i++ {
 		go e.Run()
 	}
+	cfg.RetryMode = amzaws.RetryModeAdaptive
+	cfg.RetryMaxAttempts = 5
+	e2, elb, rc, ac := ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg)
 
 	if bootstrap {
 		err = environments.Set(bootstrapEnv, properties.BootstrapVars{
@@ -108,7 +112,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		ExecuteEnv(bootstrapEnv, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), nil)
+		ExecuteEnv(bootstrapEnv, &e, e2, elb, rc, ac, nil)
 		return
 	}
 	if environments.Len() == 0 {
