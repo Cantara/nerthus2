@@ -32,7 +32,7 @@ func (d *data) Execute(c chan<- executor.Func) {
 
 	_, err := loadbalancer.CreateTarget(*d.tg, d.n.Id, d.c)
 	if err != nil {
-		log.WithError(err).Error("while creating nodes")
+		log.WithError(err).Error("while creating target")
 		c <- d.Execute
 		return
 	}

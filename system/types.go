@@ -70,7 +70,7 @@ type Cluster struct {
 	Internal      bool              `yaml:"internal"` //This could probably be handled with looking for webserverport on all services in the cluster
 	NumberOfNodes int               `yaml:"number_of_nodes"`
 	NodeNames     []string          `yaml:"node_names"`
-	ClusterName   string            `yaml:"cluster_name"`
+	DNSRoot       string            `yaml:"dns_root"`
 	SecurityGroup string            `yaml:"security_group"`
 	TargetGroup   string            `yaml:"target_group"`
 	//Dirs               *map[string]string          `yaml:"dirs,omitempty"` //Keeping these as it might be helpfull to copy files to the ec2 user aswell

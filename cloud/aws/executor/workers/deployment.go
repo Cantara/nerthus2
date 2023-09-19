@@ -19,14 +19,13 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/lbsg"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/sg"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/sn"
-	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/tg"
 )
 
 type Executor interface {
 	Add(executor.Func)
 }
 
-func Deployment(nodes []string, port int, arch ami.Arch, imageName, serviceType, path, network, cluster, system, env, size, nerthus, visuale, domain string, e Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client) { //TODO: Change fingerprint to take inn config object
+func DeployInfra(nodes []string, arch ami.Arch, imageName, network, cluster, system, env, size, nerthus, visuale, domain string, e Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client) { //TODO: Change fingerprint to take inn config object
 	te := target.Executor(elb)
 	re := rule.Executor(elb)
 
@@ -62,15 +61,17 @@ func Deployment(nodes []string, port int, arch ami.Arch, imageName, serviceType,
 	sge := sg.Executor(env, cluster, []sg.Requireing{
 		ne,
 	}, e2)
-	tge := tg.Executor(env, cluster, path, port, []tg.Requireing{
-		te,
-		re,
-	}, elb)
+	/*
+		tge := tg.Executor(env, cluster, path, port, []tg.Requireing{
+			te,
+			re,
+		}, elb)
+	*/
 
 	e.Add(vpc.Executor(env, cluster, network, []vpc.Requireing{
 		lbsge,
 		sne,
 		sge,
-		tge,
+		//tge,
 	}, e2).Execute)
 }

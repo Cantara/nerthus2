@@ -56,7 +56,7 @@ func CreateRule(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err erro
 		},
 		Conditions: []elbv2types.RuleCondition{
 			{
-				Field: aws.String("path-pattern"),
+				Field: aws.String("path-pattern"), //This need to support more than this.
 				Values: []string{
 					path,
 					path + "/*",

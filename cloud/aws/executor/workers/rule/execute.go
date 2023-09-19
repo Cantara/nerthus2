@@ -31,7 +31,7 @@ func (d *data) Execute(c chan<- executor.Func) {
 
 	_, err := loadbalancer.CreateRule(*d.listner, *d.tg, d.c)
 	if err != nil {
-		log.WithError(err).Error("while creating nodes")
+		log.WithError(err).Error("while creating rule")
 		c <- d.Execute
 		return
 	}

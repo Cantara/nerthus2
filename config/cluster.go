@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/cantara/nerthus2/system"
 	"os"
 	"strings"
+
+	"github.com/cantara/nerthus2/system"
 )
 
 func ClusterProvisioningVars(env system.Environment, sys system.System, cluster system.Cluster, bootstrap bool) (vars map[string]any) {
@@ -32,7 +33,8 @@ func ClusterProvisioningVars(env system.Environment, sys system.System, cluster 
 		"cidr_base":           sys.CIDR,
 		"zone":                sys.Zone,
 		"iam_profile":         cluster.IAM,
-		"cluster_name":        cluster.ClusterName,
+		"dns_root":            cluster.DNSRoot,
+		"cluster_name":        cluster.DNSRoot,
 		"cluster_ports":       cluster.Expose,
 		"cluster_info":        cluster.ClusterInfo,
 		"routing_method":      sys.RoutingMethod,

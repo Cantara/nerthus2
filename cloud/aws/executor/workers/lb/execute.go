@@ -45,7 +45,7 @@ func (d *data) Execute(c chan<- executor.Func) {
 
 	lb, err := loadbalancer.CreateLoadbalancer(d.name, d.sg.Id, d.subnets, d.c)
 	if err != nil {
-		log.WithError(err).Error("while creating nodes")
+		log.WithError(err).Error("while creating loadbalancer", "name", d.name, "subnets", d.subnets)
 		c <- d.Execute
 		return
 	}
@@ -74,6 +74,8 @@ func (d *data) SG(sg security.Group) executor.Func {
 }
 
 func (d *data) executable() executor.Func {
+	defer d.l.Unlock()
+	d.l.Lock()
 	if len(d.subnets) == 0 {
 		return nil
 	}

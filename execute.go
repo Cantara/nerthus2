@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -47,6 +46,9 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 			}
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
+			//nodes, port, arch, imageName, serviceType, path, network, cluster, system, env, size, nerthus, visuale, domain
+			workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
+			// , *service.WebserverPort, service.ServiceInfo.ServiceType, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Name))
 			for _, service := range cluster.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
 				for nodeNum, nodeName := range cluster.NodeNames {
@@ -66,9 +68,6 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 						Data:   serviceProvisioningPlayYaml,
 					}
 				}
-
-				//numNodes, port int, arch ami.Arch, imageName, serviceType, path, network, cluster, system, env, size, nerthus, visuale, domain string, e Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client)
-				workers.Deployment(cluster.NodeNames, *service.WebserverPort, cluster.Arch, cluster.OSName, service.ServiceInfo.ServiceType, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Name)), systemConf.CIDR, cluster.ClusterName, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			}
 
 			/*
@@ -129,6 +128,7 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 			}
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name, "overrides", cluster.Override)
 
+			workers.DeployInfra(cluster.NodeNames, cluster.Arch, cluster.OSName, systemConf.CIDR, cluster.Name, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			for _, service := range cluster.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *cluster, *service)
 				for nodeNum, nodeName := range cluster.NodeNames {
@@ -148,7 +148,6 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 						Data:   serviceProvisioningPlayYaml,
 					}
 				}
-				workers.Deployment(cluster.NodeNames, *service.WebserverPort, cluster.Arch, cluster.OSName, service.ServiceInfo.ServiceType, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Name)), systemConf.CIDR, cluster.ClusterName, systemConf.Name, envConf.Name, cluster.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			}
 
 			/*
@@ -204,6 +203,7 @@ func ExecuteCluster(env, sys, cluster string, e workers.Executor, e2 *ec2.Client
 			}
 			log.Info("executing cluster", "env", envConf.Name, "system", systemConf.Name, "cluster", clusterConf.Name, "overrides", clusterConf.Override)
 
+			workers.DeployInfra(clusterConf.NodeNames, clusterConf.Arch, clusterConf.OSName, systemConf.CIDR, clusterConf.Name, systemConf.Name, envConf.Name, clusterConf.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 			for _, service := range clusterConf.Services {
 				serviceVars := config.ServiceProvisioningVars(envConf, systemConf, *clusterConf, *service)
 				for nodeNum, nodeName := range clusterConf.NodeNames {
@@ -222,7 +222,6 @@ func ExecuteCluster(env, sys, cluster string, e workers.Executor, e2 *ec2.Client
 						Action: message.Playbook,
 						Data:   serviceProvisioningPlayYaml,
 					}
-					workers.Deployment(clusterConf.NodeNames, *service.WebserverPort, clusterConf.Arch, clusterConf.OSName, service.ServiceInfo.ServiceType, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Name)), systemConf.CIDR, clusterConf.ClusterName, systemConf.Name, envConf.Name, clusterConf.InstanceType, envConf.Nerthus, envConf.Visuale, systemConf.Domain, e, e2, elb, rc, cc)
 				}
 			}
 
