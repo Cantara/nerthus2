@@ -26,7 +26,7 @@ type data struct {
 	rs   []Requireing
 }
 
-func Executor(base, env string, rs []Requireing, ac *awsacm.Client, rc *route53.Client) data {
+func Executor(base string, rs []Requireing, ac *awsacm.Client, rc *route53.Client) data {
 	/*
 		domainBaseName := "quadim.dev"
 		domainName := fmt.Sprintf("dev.%s", domainBaseName)
@@ -36,7 +36,7 @@ func Executor(base, env string, rs []Requireing, ac *awsacm.Client, rc *route53.
 		ac:   ac,
 		rc:   rc,
 		base: base,
-		name: fmt.Sprintf("*.%s.%s", env, base),
+		name: fmt.Sprintf("*.%s", base),
 		rs:   rs,
 	}
 }

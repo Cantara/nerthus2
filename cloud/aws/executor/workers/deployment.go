@@ -65,7 +65,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, e Executor, e2 *ec2
 
 	le := listener.Executor(reqList, elb)
 
-	e.Add(cert.Executor(sys.Domain, env, []cert.Requireing{
+	e.Add(cert.Executor(sys.Domain, []cert.Requireing{
 		le,
 	}, cc, rc).Execute)
 
@@ -94,7 +94,7 @@ func DeployInfra(nodes []string, arch ami.Arch, imageName, network, cluster, sys
 		re,
 	}, elb)
 
-	e.Add(cert.Executor(domain, env, []cert.Requireing{
+	e.Add(cert.Executor(domain, []cert.Requireing{
 		le,
 	}, cc, rc).Execute)
 
