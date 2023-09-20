@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	amzaws "github.com/aws/aws-sdk-go-v2/aws"
@@ -28,6 +30,7 @@ import (
 	"github.com/cantara/gober/stream/event/store/ondisk"
 	"github.com/cantara/gober/syncmap"
 	"github.com/cantara/gober/webserver"
+	"github.com/cantara/gober/webserver/health"
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
 	"github.com/cantara/nerthus2/cloud/aws/executor"
@@ -386,6 +389,73 @@ func main() {
 		}
 		log.Info("reader closed, ending websocket function")
 	})
+
+	//https://visuale.greps.dev/api/status/prod/Stamp-server/prod-greps-stamp-server?service_tag=Greps&service_type=A2A
+	visuale := make(map[string]map[string]map[string][]health.Report)
+	var vLock sync.Mutex
+	serv.Base.PUT("/api/status/:env/:service/:hostname", func(c *gin.Context) {
+		env := c.Params.ByName("env")
+		service := c.Params.ByName("service")
+		hostname := c.Params.ByName("hostname")
+
+		var report health.Report
+		err := c.MustBindWith(&report, binding.JSON)
+		if err != nil {
+			log.WithError(err).Debug("while binding json body from key put")
+			return
+		}
+
+		vLock.Lock()
+		defer vLock.Unlock()
+
+		if _, ok := visuale[env]; !ok {
+			visuale[env] = make(map[string]map[string][]health.Report)
+		}
+		if _, ok := visuale[env][service]; !ok {
+			visuale[env][service] = make(map[string][]health.Report)
+		}
+		if _, ok := visuale[env][service][hostname]; !ok {
+			visuale[env][service][hostname] = make([]health.Report, 0)
+		}
+		reports := visuale[env][service][hostname]
+		reports = append(reports, report)
+		visuale[env][service][hostname] = reports
+
+		if strings.ToLower(report.Status) != strings.ToLower(reports[len(reports)-2].Status) {
+			log.Warning("node changed visuale status", "env", env, "service", service, "hostname", hostname, "status", report.Status)
+		}
+	})
+
+	go func() {
+		for t := range time.NewTicker(time.Second).C {
+			if t.Second()%30 == 0 {
+				vLock.Lock()
+				d, err := json.Marshal(visuale)
+				for env := range visuale {
+					for service := range visuale[env] {
+						for hostname, reports := range visuale[env][service] {
+							visuale[env][service][hostname] = reports[len(reports)-1:]
+						}
+					}
+				}
+				vLock.Unlock()
+				if err != nil {
+					log.WithError(err).Error("while marshalling json")
+					continue
+				}
+				f, err := os.OpenFile("visuale.json", os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0640)
+				if err != nil {
+					log.WithError(err).Error("while opening visuale.json file")
+					continue
+				}
+				_, err = f.WriteString(string(d))
+				if err != nil {
+					log.WithError(err).Error("while writing visuale.json file")
+				}
+				f.Close()
+			}
+		}
+	}()
 
 	log.Info("starting webserver", "environments", environments.Keys())
 	serv.Run()
