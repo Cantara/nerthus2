@@ -40,20 +40,19 @@ func TestGenServerProv(t *testing.T) {
 		"foundation2": 18032,
 	}
 	b, err := base64.StdEncoding.DecodeString(GenServerProv(ServerData{
-		BuriVers:  "0.11.9",
-		CName:     "nerthus",
-		CInfo:     ci,
-		CPorts:    cp,
-		Env:       "test",
-		NUrl:      "nerthus.test.exoreaction.dev",
-		Hostname:  "test-nerthus-1",
-		NodeNames: []string{"test-nerthus-1", "test-nerthus-2", "test-nerthus-3"},
-		OS:        "linux",
-		Arch:      "arm64",
-		ServNum:   0,
-		User:      "ec2-user",
-		System:    "nerthus",
-		VUrl:      "visuale.test.exoreaction.dev",
+		BuriVers: "0.11.9",
+		CName:    "nerthus",
+		CInfo:    ci,
+		CPorts:   cp,
+		Env:      "test",
+		NUrl:     "nerthus.test.exoreaction.dev",
+		Hostname: "test-nerthus-1",
+		OS:       "linux",
+		Arch:     "arm64",
+		ServNum:  0,
+		User:     "ec2-user",
+		System:   "nerthus",
+		VUrl:     "visuale.test.exoreaction.dev",
 	}))
 	fmt.Println("ProvScript: ", string(b), "\nErr: ", err)
 }

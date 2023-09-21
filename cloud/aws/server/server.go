@@ -110,20 +110,20 @@ func NameAvailable(name string, e2 *ec2.Client) (available bool, err error) {
 	return
 }
 
-func Create(nodeNum int, nodeNames []string, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
-	s, err := GetServer(nodeNames[nodeNum], e2)
+func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
+	s, err := GetServer(node, e2)
 	if err != nil {
 		if !errors.Is(err, ErrServerNotFound) {
 			return Server{}, err
 		}
 		err = nil
 	} else {
-		log.Trace("Server already exists", "name", nodeNames[nodeNum])
+		log.Trace("Server already exists", "name", node)
 		return s, nil
 	}
 	// Specify the details of the instance that you want to create
 	s = Server{
-		Name:    nodeNames[nodeNum],
+		Name:    node,
 		Cluster: cluster,
 		ami:     image,
 		key:     key,
@@ -131,18 +131,17 @@ func Create(nodeNum int, nodeNames []string, cluster, system, env, iType, subnet
 		Type:    iType,
 	}
 	ProvScript := GenServerProv(ServerData{
-		BuriVers:  "0.11.9",
-		CName:     cluster,
-		Env:       env,
-		NUrl:      nerthusUrl,
-		Hostname:  nodeNames[nodeNum],
-		NodeNames: nodeNames,
-		OS:        "linux",
-		Arch:      image.Arch.String(),
-		ServNum:   nodeNum,
-		User:      image.Username(),
-		System:    system,
-		VUrl:      visualeUrl,
+		BuriVers: "0.11.9",
+		CName:    cluster,
+		Env:      env,
+		NUrl:     nerthusUrl,
+		Hostname: node,
+		OS:       "linux",
+		Arch:     image.Arch.String(),
+		ServNum:  nodeNum,
+		User:     image.Username(),
+		System:   system,
+		VUrl:     visualeUrl,
 	})
 	result, err := e2.RunInstances(context.Background(), &ec2.RunInstancesInput{
 		ImageId:      &s.ami.Id,
@@ -308,6 +307,14 @@ func (s *Server) GetVolumeId(e2 *ec2.Client) (volumeId string, err error) {
 
 var ErrServerNotFound = errors.New("server not found")
 
+/*
+Storing a usefull func for generating lists
+
+	node_names:
+{{- range $i, $n := .NodeNames }}
+  - {{.}}{{end}}
+*/
+
 var serverTemplate = template.Must(template.New("vars").Parse(`#!/bin/sh
 yum -y install python3 python3-pip python3-wheel
 su -c "yes | sudo pip3 install ansible --quiet --exists-action i > /dev/null" {{.User}}
@@ -339,9 +346,6 @@ cat <<'EOF' > provision.yml
       hostname={{.Hostname}}
     hostname: {{.Hostname}}
     nerthus_host: {{.NUrl}}
-    node_names:
-{{- range $i, $n := .NodeNames }}
-    - {{.}}{{end}}
     os: {{.OS}}
     os_arch: {{.Arch}}
     server_number: {{.ServNum}}
@@ -444,20 +448,19 @@ EOF
 su -c "ansible-playbook provision.yml" `
 
 type ServerData struct {
-	BuriVers  string
-	CInfo     map[string]string
-	CName     string
-	CPorts    map[string]int
-	Env       string
-	NUrl      string
-	Hostname  string
-	NodeNames []string
-	OS        string
-	Arch      string
-	ServNum   int
-	User      string
-	System    string
-	VUrl      string
+	BuriVers string
+	CInfo    map[string]string
+	CName    string
+	CPorts   map[string]int
+	Env      string
+	NUrl     string
+	Hostname string
+	OS       string
+	Arch     string
+	ServNum  int
+	User     string
+	System   string
+	VUrl     string
 }
 
 func GenServerProv(data ServerData) string {

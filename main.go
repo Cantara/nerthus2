@@ -33,7 +33,7 @@ import (
 	"github.com/cantara/gober/webserver/health"
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
-	"github.com/cantara/nerthus2/cloud/aws/executor"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/saga"
 	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
@@ -94,9 +94,9 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while getting aws config")
 	}
-	e := executor.NewExecutor()
+	sagaChan := make(chan saga.Executable, 1000)
 	for i := 0; i < 100; i++ {
-		go e.Run()
+		go saga.Worker(sagaChan)
 	}
 	cfg.RetryMode = amzaws.RetryModeAdaptive
 	cfg.RetryMaxAttempts = 5
@@ -115,7 +115,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		ExecuteEnv(bootstrapEnv, &e, e2, elb, rc, ac, nil)
+		ExecuteEnv(bootstrapEnv, sagaChan, e2, elb, rc, ac, nil)
 		return
 	}
 	if environments.Len() == 0 {
@@ -160,7 +160,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteEnv(env, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
+		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))
@@ -190,7 +190,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteSys(env, sys, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
+		go ExecuteSys(env, sys, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))
@@ -222,7 +222,7 @@ func main() {
 				}
 			}
 		}(c)
-		go ExecuteCluster(env, sys, cluster, &e, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
+		go ExecuteCluster(env, sys, cluster, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
 		for result := range resultChan {
 			out, _ := jsoniter.ConfigFastest.Marshal(result)
 			c.SSEvent("result", string(out))
@@ -328,7 +328,7 @@ func main() {
 		})
 	}
 
-	websocket.Serve[message.Action](serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
+	websocket.Serve(serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
 		defer close(writer)
 		host := p.ByName("host")
 		log.Info("opening websocket", "host", host)

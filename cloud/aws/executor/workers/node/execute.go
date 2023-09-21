@@ -1,26 +1,20 @@
 package node
 
 import (
-	"sync"
-
 	log "github.com/cantara/bragi/sbragi"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/cantara/nerthus2/cloud/aws/ami"
-	"github.com/cantara/nerthus2/cloud/aws/executor"
 	"github.com/cantara/nerthus2/cloud/aws/key"
 	"github.com/cantara/nerthus2/cloud/aws/security"
 	"github.com/cantara/nerthus2/cloud/aws/server"
 )
 
-type Requireing interface {
-	Node(server.Server) executor.Func
-}
-
 type data struct {
 	c       *ec2.Client
 	cluster string
-	names   []string
+	name    string
+	num     int
 	system  string
 	env     string
 	size    string
@@ -30,94 +24,45 @@ type data struct {
 	img     *ami.Image
 	key     *key.Key
 	sg      *security.Group
-	rs      []Requireing
-
-	l *sync.Mutex
 }
 
-func Executor(nodes []string, cluster, system, env, size, nerthus, visuale string, rs []Requireing, c *ec2.Client) *data {
+func Executor(num int, node, cluster, system, env, size, nerthus, visuale string, c *ec2.Client) *data {
 	return &data{
 		c:       c,
-		names:   nodes,
+		name:    node,
+		num:     num,
 		cluster: cluster,
 		system:  system,
 		env:     env,
 		size:    size,
 		nerthus: nerthus,
 		visuale: visuale,
-		rs:      rs,
-
-		l: &sync.Mutex{},
 	}
 }
 
-func (d *data) Execute(c chan<- executor.Func) {
+func (d *data) Execute() (server.Server, error) {
 	log.Debug("executing node")
-	nodes := make([]server.Server, len(d.names))
-	ids := make([]string, len(d.names))
-	for i := range d.names {
-		s, err := server.Create(i, d.names, d.cluster, d.system, d.env, d.size, d.subnets[i], d.nerthus, d.visuale, *d.img, *d.key, *d.sg, d.c)
-		if err != nil {
-			log.WithError(err).Error("while creating nodes", "env", d.env, "system", d.system, "cluster", d.cluster, "image", d.img.HName, "subnets", d.subnets, "node", i)
-			c <- d.Execute
-			return
-		}
-		nodes[i] = s
-		ids[i] = s.Id
+	s, err := server.Create(d.num, d.name, d.cluster, d.system, d.env, d.size, d.subnets[d.num%len(d.subnets)], d.nerthus, d.visuale, *d.img, *d.key, *d.sg, d.c)
+	if err != nil {
+		log.WithError(err).Error("while creating nodes", "env", d.env, "system", d.system, "cluster", d.cluster, "image", d.img.HName, "subnets", d.subnets, "node", d.num)
+		return server.Server{}, err
 	}
-	server.WaitUntilRunning(ids, d.c)
-	for _, n := range nodes {
-		for _, r := range d.rs {
-			f := r.Node(n)
-			if f == nil {
-				continue
-			}
-			c <- f
-		}
-	}
+	server.WaitUntilRunning([]string{s.Id}, d.c)
+	return s, nil
 }
 
-func (d *data) Subnets(subnets []string) executor.Func {
-	defer d.l.Unlock()
-	d.l.Lock()
+func (d *data) Subnets(subnets []string) {
 	d.subnets = subnets
-	return d.executable()
 }
 
-func (d *data) Image(i ami.Image) executor.Func {
-	defer d.l.Unlock()
-	d.l.Lock()
+func (d *data) Image(i ami.Image) {
 	d.img = &i
-	return d.executable()
 }
 
-func (d *data) Key(k key.Key) executor.Func {
-	defer d.l.Unlock()
-	d.l.Lock()
+func (d *data) Key(k key.Key) {
 	d.key = &k
-	return d.executable()
 }
 
-func (d *data) SG(sg security.Group) executor.Func {
-	defer d.l.Unlock()
-	d.l.Lock()
+func (d *data) SG(sg security.Group) {
 	d.sg = &sg
-	return d.executable()
-}
-
-func (d *data) executable() executor.Func {
-	if len(d.subnets) == 0 {
-		return nil
-	}
-	if d.img == nil {
-		return nil
-	}
-	if d.key == nil {
-		return nil
-	}
-	if d.sg == nil {
-		return nil
-	}
-
-	return d.Execute
 }

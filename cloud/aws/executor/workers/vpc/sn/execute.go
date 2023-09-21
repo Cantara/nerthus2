@@ -13,41 +13,30 @@ type Requireing interface {
 }
 
 type data struct {
-	c  *ec2.Client
-	v  vpc.VPC
-	rs []Requireing
+	c *ec2.Client
+	v vpc.VPC
 }
 
-func Executor(rs []Requireing, c *ec2.Client) *data {
+func Executor(c *ec2.Client) *data {
 	return &data{
-		c:  c,
-		rs: rs,
+		c: c,
 	}
 }
 
-func (d *data) Execute(c chan<- executor.Func) {
+func (d *data) Execute() ([]string, error) {
 	err := vpc.CreateSubnets(d.v, d.c)
 	if err != nil {
 		log.WithError(err).Error("while getting subnets")
-		c <- d.Execute
-		return
+		return []string{}, err
 	}
 	s, err := vpc.GetSubnets(d.v.Id, d.c)
 	if err != nil {
 		log.WithError(err).Error("while getting subnets")
-		c <- d.Execute
-		return
+		return []string{}, err
 	}
-	for _, r := range d.rs {
-		f := r.Subnets(vpc.SubnetsToIds(s))
-		if f == nil {
-			continue
-		}
-		c <- f
-	}
+	return vpc.SubnetsToIds(s), nil
 }
 
-func (d *data) VPC(v vpc.VPC) executor.Func {
+func (d *data) VPC(v vpc.VPC) {
 	d.v = v
-	return d.Execute
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/saga"
 	"github.com/cantara/nerthus2/config"
 	"github.com/cantara/nerthus2/executors/ansible/generators"
 	"github.com/cantara/nerthus2/message"
@@ -28,7 +29,7 @@ import (
 
 var baseFS = os.DirFS(".")
 
-func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
+func ExecuteEnv(env string, c chan<- saga.Executable, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
 	defer close(resultChan)
 	envConf, err := config.ReadFullEnv(env, baseFS)
 	if err != nil {
@@ -39,7 +40,7 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 			log.Info("skipping systemConf while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name)
 			continue
 		}
-		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, c, e2, elb, rc, cc)
 		for _, cluster := range systemConf.Clusters {
 			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
 				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
@@ -108,7 +109,7 @@ func ExecuteEnv(env string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Clien
 	}
 }
 
-func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
+func ExecuteSys(env, sys string, c chan<- saga.Executable, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
 	defer close(resultChan)
 	if bootstrap {
 		log.Fatal("can't bootstrap a single systemConf", "env", env, "system", sys)
@@ -122,7 +123,7 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 		if strings.ToLower(systemConf.Name) != sys {
 			continue
 		}
-		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, c, e2, elb, rc, cc)
 		for _, cluster := range systemConf.Clusters {
 			if bootstrap && strings.ToLower(cluster.Name) != "nerthus" { //FIXME: This logic is flawed
 				log.Info("skipping cluster while bootstrap nerthus", "env", envConf.Name, "system", systemConf.Name, "cluster", cluster.Name)
@@ -185,7 +186,7 @@ func ExecuteSys(env, sys string, e workers.Executor, e2 *ec2.Client, elb *elbv2.
 	}
 }
 
-func ExecuteCluster(env, sys, cluster string, e workers.Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
+func ExecuteCluster(env, sys, cluster string, c chan<- saga.Executable, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client, resultChan chan<- string) {
 	defer close(resultChan)
 	if bootstrap {
 		log.Fatal("can't bootstrap a single service", "env", env, "system", sys, "cluster", cluster)
@@ -200,7 +201,7 @@ func ExecuteCluster(env, sys, cluster string, e workers.Executor, e2 *ec2.Client
 			continue
 		}
 		//TODO: remove all clusters that are not relevant before executing
-		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, e, e2, elb, rc, cc)
+		workers.Deploy(systemConf, envConf.Name, envConf.Nerthus, envConf.Visuale, c, e2, elb, rc, cc)
 		for _, clusterConf := range systemConf.Clusters {
 			if strings.ToLower(clusterConf.Name) != cluster {
 				continue
