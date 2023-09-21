@@ -91,6 +91,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 			nes[i] = ne
 		}
 
+		var prse *saga.Event[any]
 		for _, service := range cluster.Services {
 			//Move the path creation to config parsing
 			tge := tg.Executor(env, sys.Name, cluster.Name, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Artifact.Id)), *service.WebserverPort, elb)
@@ -101,7 +102,10 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 			rse := &saga.Event[any]{Func: re.Execute}
 			lse.Mandates(saga.Mandatabale(rse, re.Listener))
 			tgse.Mandates(saga.Mandatabale(rse, re.TG))
-			rse.Mandates(s.End)
+			if prse != nil {
+				prse.Mandates(saga.Mandatabale(rse, func(any) {}))
+			}
+			prse = rse
 
 			for _, ne := range nes {
 				te := target.Executor(elb)
@@ -111,6 +115,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 				tse.Mandates(s.End)
 			}
 		}
+		prse.Mandates(s.End)
 	}
 
 	s.Execute(c)
