@@ -333,15 +333,6 @@ func main() {
 		host := p.ByName("host")
 		log.Info("opening websocket", "host", host)
 		defer log.Info("closed websocket", "host", host)
-		go func() {
-			for msg := range reader {
-				if msg.Response == nil {
-					log.Warning("read action response without response", "action", msg)
-					continue
-				}
-				log.Info("response from action", "message", msg.Response.Message, "status", msg.Response.Status)
-			}
-		}()
 
 		var authorizedKeys bytes.Buffer
 		for _, k := range keyMap.GetMap() {
@@ -369,22 +360,36 @@ func main() {
 			hostChan = make(chan message.Action, 10)
 			hostActions.Set(host, hostChan)
 		}
-	Reader:
-		for a := range hostChan {
-			errChan := make(chan error, 1)
-			action := websocket.Write[message.Action]{
-				Data: a,
-				Err:  errChan,
-			}
+	Worker:
+		for {
 			select {
 			case <-ctx.Done():
-				break Reader
-			case writer <- action:
-				err := <-errChan
-				if err != nil {
-					log.WithError(err).Error("unable to write action to nerthus probe",
-						"action_type", reflect.TypeOf(action))
-					continue Reader
+				break Worker
+			case msg, ok := <-reader:
+				if !ok {
+					break Worker
+				}
+				if msg.Response == nil {
+					log.Warning("read action response without response", "action", msg)
+					continue Worker
+				}
+				log.Info("response from action", "message", msg.Response.Message, "status", msg.Response.Status)
+			case a := <-hostChan:
+				errChan := make(chan error, 1)
+				action := websocket.Write[message.Action]{
+					Data: a,
+					Err:  errChan,
+				}
+				select {
+				case <-ctx.Done():
+					break Worker
+				case writer <- action:
+					err := <-errChan
+					if err != nil {
+						log.WithError(err).Error("unable to write action to nerthus probe",
+							"action_type", reflect.TypeOf(action))
+						continue Worker
+					}
 				}
 			}
 		}
