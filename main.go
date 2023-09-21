@@ -369,6 +369,7 @@ func main() {
 			hostChan = make(chan message.Action, 10)
 			hostActions.Set(host, hostChan)
 		}
+	Reader:
 		for a := range hostChan {
 			errChan := make(chan error, 1)
 			action := websocket.Write[message.Action]{
@@ -377,13 +378,13 @@ func main() {
 			}
 			select {
 			case <-ctx.Done():
-				return
+				break Reader
 			case writer <- action:
 				err := <-errChan
 				if err != nil {
 					log.WithError(err).Error("unable to write action to nerthus probe",
 						"action_type", reflect.TypeOf(action))
-					return //TODO continue
+					continue Reader
 				}
 			}
 		}
