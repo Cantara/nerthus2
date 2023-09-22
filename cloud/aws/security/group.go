@@ -246,7 +246,55 @@ func (g Group) AddLoadbalancerAuthorization(loadbalancerId string, port int, e2 
 		err = fmt.Errorf("Could not add service loadbalancer authorization to security group %s %s. err: %v", g.Id, g.Name, err)
 		return
 	}
+	return
+}
 
+func (g Group) AddLoadbalancerPublicAccess(e2 *ec2.Client) (err error) {
+	input := &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: aws.String(g.Id),
+		IpPermissions: []ec2types.IpPermission{
+			{
+				FromPort:   aws.Int32(80),
+				IpProtocol: aws.String("tcp"),
+				ToPort:     aws.Int32(80),
+				IpRanges: []ec2types.IpRange{
+					{
+						Description: aws.String("HTTP access to loadbalancer from anywhere"),
+						CidrIp:      aws.String("0.0.0.0/0"),
+					},
+				},
+				Ipv6Ranges: []ec2types.Ipv6Range{
+					{
+						Description: aws.String("HTTP access to loadbalancer from anywhere"),
+						CidrIpv6:    aws.String("::/0"),
+					},
+				},
+			},
+			{
+				FromPort:   aws.Int32(443),
+				IpProtocol: aws.String("tcp"),
+				ToPort:     aws.Int32(443),
+				IpRanges: []ec2types.IpRange{
+					{
+						Description: aws.String("HTTP access to loadbalancer from anywhere"),
+						CidrIp:      aws.String("0.0.0.0/0"),
+					},
+				},
+				Ipv6Ranges: []ec2types.Ipv6Range{
+					{
+						Description: aws.String("HTTP access to loadbalancer from anywhere"),
+						CidrIpv6:    aws.String("::/0"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err = e2.AuthorizeSecurityGroupIngress(context.Background(), input)
+	if err != nil {
+		err = fmt.Errorf("Could not add service loadbalancer authorization to security group %s %s. err: %v", g.Id, g.Name, err)
+		return
+	}
 	return
 }
 

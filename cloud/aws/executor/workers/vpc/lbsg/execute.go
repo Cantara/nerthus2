@@ -33,6 +33,11 @@ func (d *data) Execute() (sg security.Group, err error) {
 		log.WithError(err).Error("while creating new security group")
 		return
 	}
+	err = sg.AddLoadbalancerPublicAccess(d.c)
+	if err != nil {
+		log.WithError(err).Error("while setting public access to loadbalancer")
+		return
+	}
 	return
 }
 
