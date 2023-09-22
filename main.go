@@ -138,6 +138,19 @@ func main() {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
 
+	serv.API.POST("/config/:env", func(c *gin.Context) {
+		env := c.Params.ByName("env")
+		if ok := environments.Exists(env); !ok {
+			c.AbortWithStatus(404)
+			return
+		}
+		_, err := GitCloneEnvironment(env, environments)
+		if err != nil {
+			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
+		}
+		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), nil)
+	})
+
 	serv.API.PUT("/config/:env", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
@@ -149,21 +162,21 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
 		resultChan := make(chan string)
-		go func(c *gin.Context) {
-			t := time.NewTicker(time.Second * 30)
-			for {
-				select {
-				case <-c.Request.Context().Done():
-					return
-				case <-t.C:
-					c.SSEvent("ping", nil)
-				}
-			}
-		}(c)
 		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
-		for result := range resultChan {
-			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", string(out))
+		t := time.NewTicker(time.Second * 30)
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				return
+			case <-t.C:
+				c.SSEvent("ping", nil)
+			case result, ok := <-resultChan:
+				if !ok {
+					return
+				}
+				out, _ := jsoniter.ConfigFastest.Marshal(result)
+				c.SSEvent("result", string(out))
+			}
 		}
 	})
 
@@ -179,21 +192,21 @@ func main() {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
 		resultChan := make(chan string)
-		go func(c *gin.Context) {
-			t := time.NewTicker(time.Second * 30)
-			for {
-				select {
-				case <-c.Request.Context().Done():
-					return
-				case <-t.C:
-					c.SSEvent("ping", nil)
-				}
-			}
-		}(c)
 		go ExecuteSys(env, sys, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
-		for result := range resultChan {
-			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", string(out))
+		t := time.NewTicker(time.Second * 30)
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				return
+			case <-t.C:
+				c.SSEvent("ping", nil)
+			case result, ok := <-resultChan:
+				if !ok {
+					return
+				}
+				out, _ := jsoniter.ConfigFastest.Marshal(result)
+				c.SSEvent("result", string(out))
+			}
 		}
 	})
 
