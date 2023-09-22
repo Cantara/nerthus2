@@ -86,7 +86,7 @@ func CreateListener(loadbalancer, cert string, elb *elbv2.Client) (listener List
 	}
 	_, err = elb.CreateListener(context.TODO(), &elbv2.CreateListenerInput{
 		LoadBalancerArn: aws.String(loadbalancer),
-		AlpnPolicy:      []string{"HTTP1Only"}, //Should become HTTP2Preferred
+		//AlpnPolicy:      []string{"HTTP1Only"}, //Should become HTTP2Preferred
 		DefaultActions: []elbTypes.Action{
 			{
 				Type: elbTypes.ActionTypeEnumRedirect,
