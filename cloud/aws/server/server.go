@@ -29,6 +29,7 @@ type Server struct {
 	PublicDNS          string
 	VolumeId           string `json:"volume_id"`
 	NetworkInterfaceId string `json:"network_interface_id"`
+	SecutityGroupId    string
 	ami                ami.Image
 	key                key.Key
 	group              security.Group
@@ -75,6 +76,7 @@ func GetServer(name string, e2 *ec2.Client) (s Server, err error) {
 				PublicDNS:          aws.ToString(instance.PublicDnsName),
 				VolumeId:           aws.ToString(instance.BlockDeviceMappings[0].Ebs.VolumeId),
 				NetworkInterfaceId: aws.ToString(instance.NetworkInterfaces[0].NetworkInterfaceId),
+				SecutityGroupId:    aws.ToString(instance.SecurityGroups[0].GroupId),
 			}
 			return
 		}
@@ -123,12 +125,13 @@ func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, 
 	}
 	// Specify the details of the instance that you want to create
 	s = Server{
-		Name:    node,
-		Cluster: cluster,
-		ami:     image,
-		key:     key,
-		group:   group,
-		Type:    iType,
+		Name:            node,
+		Cluster:         cluster,
+		ami:             image,
+		key:             key,
+		group:           group,
+		Type:            iType,
+		SecutityGroupId: group.Id,
 	}
 	ProvScript := GenServerProv(ServerData{
 		BuriVers: "0.11.9",

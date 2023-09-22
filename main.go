@@ -34,6 +34,8 @@ import (
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/saga"
+	"github.com/cantara/nerthus2/cloud/aws/security"
+	"github.com/cantara/nerthus2/cloud/aws/server"
 	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
@@ -283,6 +285,31 @@ func main() {
 				return
 			}
 			c.JSON(http.StatusOK, servers)
+		})
+		auth.PUT("/ssh/:server", func(c *gin.Context) {
+			name := c.Params.ByName("server")
+			serv, err := server.GetServer(name, e2)
+			if err != nil {
+				if errors.Is(err, server.ErrServerNotFound) {
+					c.JSON(http.StatusNotFound, gin.H{"error": "server not found"})
+				} else {
+					log.WithError(err).Error("while getting servers from aws")
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+				}
+				return
+			}
+			g, err := security.ById(serv.SecutityGroupId, e2)
+			if err != nil {
+				log.WithError(err).Error("while getting server security group from aws")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			}
+			err = g.OpenSSH("TMP_ALL_USER", c.ClientIP(), e2)
+			if err != nil {
+				log.WithError(err).Error("while opening ssh to server")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+			}
+
+			c.JSON(http.StatusOK, nil)
 		})
 
 		auth.PUT("/key/:user/:name", func(c *gin.Context) {

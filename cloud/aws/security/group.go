@@ -77,6 +77,32 @@ func Get(name, vpcId string, e2 *ec2.Client) (g Group, err error) {
 
 	return
 }
+func ById(id string, e2 *ec2.Client) (g Group, err error) {
+	log.Trace("getting security group", "id", id)
+	result, err := e2.DescribeSecurityGroups(context.Background(), &ec2.DescribeSecurityGroupsInput{
+		GroupIds: []string{id}, //Documentation is weird, might need to use filter instead.
+	})
+	if err != nil {
+		err = fmt.Errorf("Unable to describe Security groups, err: %v", err)
+		return
+	}
+	if len(result.SecurityGroups) == 0 {
+		log.Trace("no security group found")
+		err = ErrNoSecurityGroupsFound
+		return
+	}
+
+	sg := result.SecurityGroups[0]
+	g = Group{
+		Cluster: vpc.Tag(sg.Tags, "Cluster"),
+		Name:    *sg.GroupName,
+		Desc:    *sg.Description,
+		Id:      *sg.GroupId,
+		vpc:     *sg.VpcId,
+	}
+
+	return
+}
 
 func New(name, cluster string, vpc string, e2 *ec2.Client) (Group, error) {
 	g, err := Get(name, vpc, e2)
