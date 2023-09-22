@@ -4,6 +4,7 @@ type Service struct {
 	Name         string       `yaml:"name"`
 	ServiceType  string       `yaml:"service_type"`
 	HealthType   string       `yaml:"health_type"`
+	APIPath      string       `yaml:"api_path"`
 	Artifact     Artifact     `yaml:"artifact"`
 	Requirements Requirements `yaml:"requirements"`
 }

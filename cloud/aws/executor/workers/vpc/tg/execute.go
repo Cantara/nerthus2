@@ -2,6 +2,7 @@ package tg
 
 import (
 	"fmt"
+	"strings"
 
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	log "github.com/cantara/bragi/sbragi"
@@ -28,7 +29,7 @@ func Executor(env, system, cluster, path string, port int, c *elbv2.Client) *dat
 		system:  system,
 		cluster: cluster,
 		name:    fmt.Sprintf("%s-%s-%s-tg", env, system, cluster), //This will be to long
-		path:    path,
+		path:    fmt.Sprintf("/%s/health", strings.Trim(path, "/")),
 		port:    port,
 	}
 }

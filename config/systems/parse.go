@@ -229,6 +229,13 @@ func Service(env system.Environment, sys system.System, cluster system.Cluster, 
 	if serv.ServiceInfo.Artifact.Id == "" {
 		serv.ServiceInfo.Artifact.Id = serv.Name
 	}
+	if serv.ServiceInfo.APIPath == "" {
+		if serv.ServiceInfo.Requirements.IsFrontend || sys.RoutingMethod == system.RoutingHost {
+			serv.ServiceInfo.APIPath = "/"
+		} else {
+			serv.ServiceInfo.APIPath = fmt.Sprintf("/%s", strings.ToLower(serv.ServiceInfo.Artifact.Id))
+		}
+	}
 	if serv.Properties != nil && !arrayContains(serv.ServiceInfo.Requirements.Roles, "local_override") {
 		serv.ServiceInfo.Requirements.Roles = append(serv.ServiceInfo.Requirements.Roles, "local_override")
 	}

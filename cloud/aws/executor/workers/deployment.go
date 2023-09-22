@@ -1,9 +1,6 @@
 package workers
 
 import (
-	"fmt"
-	"strings"
-
 	awsacm "github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
@@ -93,8 +90,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 
 		var prse *saga.Event[any]
 		for _, service := range cluster.Services {
-			//Move the path creation to config parsing
-			tge := tg.Executor(env, sys.Name, cluster.Name, fmt.Sprintf("/%s", strings.ToLower(service.ServiceInfo.Artifact.Id)), *service.WebserverPort, elb)
+			tge := tg.Executor(env, sys.Name, cluster.Name, service.ServiceInfo.APIPath, *service.WebserverPort, elb)
 			tgse := &saga.Event[loadbalancer.TargetGroup]{Func: tge.Execute}
 			ve.Mandates(saga.Mandatabale(tgse, tge.VPC))
 
@@ -120,56 +116,3 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 
 	s.Execute(c)
 }
-
-/*
-func DeployInfra(nodes []string, arch ami.Arch, imageName, network, cluster, system, env, size, nerthus, visuale, domain string, e Executor, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, cc *acm.Client) { //TODO: Change fingerprint to take inn config object
-	te := target.Executor(elb)
-	re := rule.Executor(elb)
-
-	le := listener.Executor([]listener.Requireing{
-		re,
-	}, elb)
-
-	e.Add(cert.Executor(domain, []cert.Requireing{
-		le,
-	}, cc, rc).Execute)
-
-	lbe := lb.Executor(env, system, []lb.Requireing{
-		le,
-	}, elb)
-
-	ne := node.Executor(nodes, cluster, system, env, size, nerthus, visuale, []node.Requireing{
-		te,
-	}, e2)
-	e.Add(key.Executor(env, system, []key.Requireing{
-		ne,
-	}, e2).Execute)
-	e.Add(image.Executor(imageName, arch, []image.Requireing{
-		ne,
-	}, e2).Execute)
-
-	lbsge := lbsg.Executor(env, system, []lbsg.Requireing{
-		lbe,
-	}, e2)
-	sne := sn.Executor([]sn.Requireing{
-		ne,
-		lbe,
-	}, e2)
-	sge := sg.Executor(env, system, cluster, []sg.Requireing{
-		ne,
-	}, e2)
-	/*
-		tge := tg.Executor(env, cluster, path, port, []tg.Requireing{
-			te,
-			re,
-		}, elb)
-*/ /*
-
-	e.Add(vpc.Executor(env, system, network, []vpc.Requireing{
-		lbsge,
-		sne,
-		sge,
-		//tge,
-	}, e2).Execute)
-}
-*/

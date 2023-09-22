@@ -60,7 +60,7 @@ func CreateTargetGroup(vpc, name, uriPath string, port int, elb *elbv2.Client) (
 		TargetType:                 "instance",
 		ProtocolVersion:            aws.String("HTTP1"),
 		HealthCheckIntervalSeconds: aws.Int32(5),
-		HealthCheckPath:            aws.String(fmt.Sprintf("/%s/health", uriPath)), //FIXME: This is shady
+		HealthCheckPath:            aws.String(uriPath),
 		HealthCheckPort:            aws.String("traffic-port"),
 		HealthCheckProtocol:        "HTTP",
 		HealthCheckTimeoutSeconds:  aws.Int32(2),
