@@ -43,7 +43,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 	ige := ig.Executor(e2)
 	igse := &saga.Event[any]{Func: ige.Execute}
 	ve.Mandates(saga.Mandatabale(igse, ige.VPC))
-	igse.Mandates(s.End)
+	igse.Mandates(saga.End[any](s))
 
 	sne := sn.Executor(e2)
 	snse := saga.Event[[]string]{Func: sne.Execute}
@@ -108,7 +108,7 @@ func Deploy(sys system.System, env, nerthus, visuale string, c chan<- saga.Execu
 				tse := &saga.Event[any]{Func: te.Execute}
 				ne.Mandates(saga.Mandatabale(tse, te.Node))
 				tgse.Mandates(saga.Mandatabale(tse, te.TG))
-				tse.Mandates(s.End)
+				tse.Mandates(saga.End[any](s))
 			}
 		}
 		prse.Mandates(s.End)
