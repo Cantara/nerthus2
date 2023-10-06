@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/apenella/go-ansible v1.1.7
-	github.com/aws/aws-sdk-go-v2 v1.21.0
+	github.com/aws/aws-sdk-go-v2 v1.21.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.43
 	github.com/aws/aws-sdk-go-v2/service/acm v1.19.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.123.0
@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.22.5
 	github.com/aws/aws-sdk-go-v2/service/rds v1.55.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.30.0
-	github.com/aws/smithy-go v1.14.2
+	github.com/aws/smithy-go v1.15.0
 	github.com/cantara/bragi v0.7.2
 	github.com/cantara/gober v0.16.0
 	github.com/gabriel-vasile/mimetype v1.4.2
