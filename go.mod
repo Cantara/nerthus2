@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/apenella/go-ansible v1.1.7
-	github.com/aws/aws-sdk-go-v2 v1.21.1
+	github.com/aws/aws-sdk-go-v2 v1.21.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.44
 	github.com/aws/aws-sdk-go-v2/service/acm v1.19.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.124.0
