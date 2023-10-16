@@ -14,7 +14,6 @@ import (
 )
 
 type Key struct {
-	Cluster     string           `json:"-"`
 	Id          string           `json:"id"`
 	Name        string           `json:"name"`
 	PemName     string           `json:"pem_name"`
@@ -24,8 +23,7 @@ type Key struct {
 	Created     time.Time
 }
 
-func New(cluster string, e2 *ec2.Client) (k Key, err error) {
-	keyName := cluster + "-key"
+func New(keyName string, e2 *ec2.Client) (k Key, err error) {
 	k, err = Get(keyName, e2)
 	if err != nil && !errors.Is(err, ErrNoKeyFound) {
 		log.WithoutEscalation().WithError(err).Trace("get error")
@@ -36,9 +34,8 @@ func New(cluster string, e2 *ec2.Client) (k Key, err error) {
 		return
 	}
 	k = Key{
-		Cluster: cluster,
-		Name:    keyName,
-		Type:    ec2types.KeyTypeEd25519,
+		Name: keyName,
+		Type: ec2types.KeyTypeEd25519,
 	}
 	keyResult, err := e2.CreateKeyPair(context.Background(), &ec2.CreateKeyPairInput{
 		KeyName: aws.String(k.Name),
