@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.30.2
 	github.com/aws/smithy-go v1.15.0
 	github.com/cantara/bragi v0.7.2
-	github.com/cantara/gober v0.16.4
+	github.com/cantara/gober v0.17.0
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.6.1
