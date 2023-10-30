@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.31.0
 	github.com/aws/smithy-go v1.15.0
-	github.com/cantara/bragi v0.7.3
+	github.com/cantara/bragi v0.7.4
 	github.com/cantara/gober v0.18.3
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gin-gonic/gin v1.9.1
@@ -21,7 +21,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
 	github.com/microsoft/go-mssqldb v1.6.0
-	github.com/modern-go/reflect2 v1.0.2
 	github.com/pkg/errors v0.9.1
 	go.mongodb.org/mongo-driver v1.12.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -76,6 +75,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
