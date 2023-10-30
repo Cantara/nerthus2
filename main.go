@@ -28,7 +28,7 @@ import (
 	"github.com/cantara/gober/eventmap"
 	"github.com/cantara/gober/stream"
 	"github.com/cantara/gober/stream/event/store/ondisk"
-	"github.com/cantara/gober/syncmap"
+	syncExt "github.com/cantara/gober/sync"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/webserver/health"
 	"github.com/cantara/gober/websocket"
@@ -507,7 +507,7 @@ func main() {
 	serv.Run()
 }
 
-var hostActions = syncmap.New[chan message.Action]()
+var hostActions = syncExt.NewMap[chan message.Action]()
 
 func GitAuth(gitConf properties.BootstrapVars) *gitHttp.BasicAuth {
 	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
