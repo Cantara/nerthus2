@@ -140,7 +140,7 @@ func main() {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
 
-	serv.API.POST("/config/:env", func(c *gin.Context) {
+	serv.API().POST("/config/:env", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
 			c.AbortWithStatus(404)
@@ -153,7 +153,7 @@ func main() {
 		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), nil)
 	})
 
-	serv.API.PUT("/config/:env", func(c *gin.Context) {
+	serv.API().PUT("/config/:env", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
 			c.AbortWithStatus(404)
@@ -182,7 +182,7 @@ func main() {
 		}
 	})
 
-	serv.API.PUT("/config/:env/:sys", func(c *gin.Context) {
+	serv.API().PUT("/config/:env/:sys", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
 			c.AbortWithStatus(404)
@@ -212,7 +212,7 @@ func main() {
 		}
 	})
 
-	serv.API.PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
+	serv.API().PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
 			log.Warning("put aborted", "env", env, "envs", environments.Keys())
@@ -244,7 +244,7 @@ func main() {
 		}
 	})
 
-	serv.API.PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
+	serv.API().PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		if ok := environments.Exists(env); !ok {
 			log.Warning("put aborted", "env", env, "envs", environments.Keys())
@@ -272,7 +272,7 @@ func main() {
 		log.WithError(err).Fatal("while initializing public key event map")
 	}
 	{
-		auth := serv.API.Group("")
+		auth := serv.API().Group("")
 		accounts := gin.Accounts{}
 		accounts[os.Getenv("api.username")] = os.Getenv("api.password")
 		auth.Use(gin.BasicAuth(accounts))
@@ -368,7 +368,7 @@ func main() {
 		})
 	}
 
-	websocket.Serve(serv.API, "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
+	websocket.Serve(serv.API(), "/probe/:host", nil, func(reader <-chan message.Action, writer chan<- websocket.Write[message.Action], p gin.Params, ctx context.Context) {
 		defer close(writer)
 		host := p.ByName("host")
 		log.Info("opening websocket", "host", host)
@@ -439,7 +439,7 @@ func main() {
 	//https://visuale.greps.dev/api/status/prod/Stamp-server/prod-greps-stamp-server?service_tag=Greps&service_type=A2A
 	visuale := make(map[string]map[string]map[string][]health.Report)
 	var vLock sync.Mutex
-	serv.Base.PUT("/api/status/:env/:service/:hostname", func(c *gin.Context) {
+	serv.Base().PUT("/api/status/:env/:service/:hostname", func(c *gin.Context) {
 		env := c.Params.ByName("env")
 		service := c.Params.ByName("service")
 		hostname := c.Params.ByName("hostname")
