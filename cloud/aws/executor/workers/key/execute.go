@@ -6,8 +6,21 @@ import (
 	log "github.com/cantara/bragi/sbragi"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
 	"github.com/cantara/nerthus2/cloud/aws/key"
 )
+
+var Fingerprint = adapter.New[key.Key]("NewKey")
+
+func Adapter(c *ec2.Client) adapter.Adapter {
+	return Fingerprint.Adapter(func(a []adapter.Value) (k key.Key, err error) {
+		i := start.Fingerprint.Value(a[0])
+		k, err = key.New(fmt.Sprintf("%s-%s-key", i.Env, i.System), c)
+		log.WithError(err).Trace("creating key")
+		return
+	}, start.Fingerprint)
+}
 
 type data struct {
 	c      *ec2.Client

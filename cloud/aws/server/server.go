@@ -134,7 +134,7 @@ func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, 
 		SecutityGroupId: group.Id,
 	}
 	ProvScript := GenServerProv(ServerData{
-		BuriVers: "0.11.9",
+		BuriVers: "0.12.5",
 		CName:    cluster,
 		Env:      env,
 		NUrl:     nerthusUrl,
@@ -170,7 +170,7 @@ func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, 
 			{
 				DeviceName: &s.ami.RootDev,
 				Ebs: &ec2types.EbsBlockDevice{
-					VolumeSize: aws.Int32(20),
+					VolumeSize: aws.Int32(30),
 					VolumeType: "gp3",
 				},
 			},

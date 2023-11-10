@@ -5,10 +5,40 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/cantara/nerthus2/cloud/aws/ami"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/image"
+	keye "github.com/cantara/nerthus2/cloud/aws/executor/workers/key"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/sg"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/sn"
 	"github.com/cantara/nerthus2/cloud/aws/key"
 	"github.com/cantara/nerthus2/cloud/aws/security"
 	"github.com/cantara/nerthus2/cloud/aws/server"
 )
+
+var Fingerprint = adapter.New[[]server.Server]("CreateOrGetNodes")
+
+func Adapter(c *ec2.Client) adapter.Adapter {
+	return Fingerprint.Adapter(func(a []adapter.Value) ([]server.Server, error) {
+		d := start.Fingerprint.Value(a[0])
+		subnets := sn.Fingerprint.Value(a[1])
+		img := image.Fingerprint.Value(a[2])
+		k := keye.Fingerprint.Value(a[3])
+		sg := sg.Fingerprint.Value(a[4])
+		servs := make([]server.Server, len(d.Nodes))
+		var ids []string
+		for i := range d.Nodes {
+			s, err := server.Create(i, d.Nodes[i], d.Cluster, d.System, d.Env, d.Size, subnets[i%len(subnets)], d.Nerthus, d.Visuale, img, k, sg, c)
+			log.WithError(err).Trace("while creating nodes", "env", d.Env, "system", d.System, "cluster", d.Cluster, "image", img.HName, "subnets", subnets, "node", i)
+			if err != nil {
+				return nil, err
+			}
+			servs[i] = s
+		}
+		server.WaitUntilRunning(ids, c)
+		return servs, nil
+	}, start.Fingerprint, sn.Fingerprint, image.Fingerprint, keye.Fingerprint, sg.Fingerprint)
+}
 
 type data struct {
 	c       *ec2.Client

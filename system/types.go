@@ -98,6 +98,14 @@ func (c Cluster) GetWebserverPort() int {
 	}
 	return -1
 }
+func (c Cluster) GetWebserverPath() string {
+	for _, serv := range c.Services {
+		if serv.ServiceInfo.APIPath != "" {
+			return serv.ServiceInfo.APIPath
+		}
+	}
+	return ""
+}
 
 func (c Cluster) HasFrontend() bool {
 	for _, serv := range c.Services {

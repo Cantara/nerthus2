@@ -25,15 +25,18 @@ import (
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/gober/consensus"
+	"github.com/cantara/gober/discovery/local"
 	"github.com/cantara/gober/eventmap"
 	"github.com/cantara/gober/stream"
+	"github.com/cantara/gober/stream/event/store/inmemory"
 	"github.com/cantara/gober/stream/event/store/ondisk"
 	syncExt "github.com/cantara/gober/sync"
 	"github.com/cantara/gober/webserver"
 	"github.com/cantara/gober/webserver/health"
 	"github.com/cantara/gober/websocket"
 	"github.com/cantara/nerthus2/aws"
-	"github.com/cantara/nerthus2/cloud/aws/executor/workers/saga"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers"
 	"github.com/cantara/nerthus2/cloud/aws/security"
 	"github.com/cantara/nerthus2/cloud/aws/server"
 	"github.com/cantara/nerthus2/config/properties"
@@ -43,7 +46,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	jsoniter "github.com/json-iterator/go"
 )
 
 //go:embed bootstrap
@@ -84,25 +86,51 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	envStream, err := ondisk.Init("environments", ctx)
+	var deploymentStream stream.Stream
+	if bootstrap {
+		deploymentStream, err = inmemory.Init("deployments", ctx)
+	} else {
+		deploymentStream, err = ondisk.Init("deployments", ctx)
+	}
+	if err != nil {
+		log.WithError(err).Fatal("while initializing fairytale stream")
+	}
+	portString := os.Getenv("webserver.port")
+	port, err := strconv.Atoi(portString)
+	if err != nil {
+		log.WithError(err).Fatal("while getting webserver port")
+	}
+	p, err := consensus.Init(uint16(port+1), os.Getenv("consensus.token"), local.New())
+	if err != nil {
+		log.WithError(err).Fatal("initing consensus")
+	}
+	// Load the Shared AWS Configuration (~/.aws/config)
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.WithError(err).Fatal("while getting aws config")
+	}
+	cfg.RetryMode = amzaws.RetryModeAdaptive
+	cfg.RetryMaxAttempts = 5
+	e2, elb, rc, ac := ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg)
+	d, err := workers.New(deploymentStream, p.AddTopic, os.Getenv("deployment.crypto.key"), e2, elb, rc, ac, ctx)
+	if err != nil {
+		log.WithError(err).Fatal("creating worker")
+	}
+	for i := 0; i < 100; i++ {
+		go d.Work()
+	}
+	var envStream stream.Stream
+	if bootstrap {
+		envStream, err = inmemory.Init("environments", ctx)
+	} else {
+		envStream, err = ondisk.Init("environments", ctx)
+	}
 	if err != nil {
 		log.WithError(err).Fatal("while initializing public key stream")
 	}
 	environments, err := eventmap.Init[properties.BootstrapVars](envStream, "environment", "v0.0.1",
 		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx)
-
-	// Load the Shared AWS Configuration (~/.aws/config)
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.WithError(err).Fatal("while getting aws config")
-	}
-	sagaChan := make(chan saga.Executable, 1000)
-	for i := 0; i < 100; i++ {
-		go saga.Worker(sagaChan)
-	}
-	cfg.RetryMode = amzaws.RetryModeAdaptive
-	cfg.RetryMaxAttempts = 5
-	e2, elb, rc, ac := ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg)
+	//TODO: If bootstrap add local users ssh key to map and add key on bootstrap
 
 	if bootstrap {
 		err = environments.Set(bootstrapEnv, properties.BootstrapVars{
@@ -117,7 +145,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
-		ExecuteEnv(bootstrapEnv, sagaChan, e2, elb, rc, ac, nil)
+		ExecuteEnv(bootstrapEnv, d.Provision)
 		return
 	}
 	if environments.Len() == 0 {
@@ -129,11 +157,6 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while storing bootstrap env in map", "isBootstrapping", bootstrap, "environments", environments.Len())
 		}
-	}
-	portString := os.Getenv("webserver.port")
-	port, err := strconv.Atoi(portString)
-	if err != nil {
-		log.WithError(err).Fatal("while getting webserver port")
 	}
 	serv, err := webserver.Init(uint16(port), true)
 	if err != nil {
@@ -150,7 +173,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), nil)
+		go ExecuteEnv(env, d.Provision)
 	})
 
 	serv.API().PUT("/config/:env", func(c *gin.Context) {
@@ -163,23 +186,24 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		resultChan := make(chan string)
-		go ExecuteEnv(env, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
-		t := time.NewTicker(time.Second * 30)
-		for {
-			select {
-			case <-c.Request.Context().Done():
-				return
-			case <-t.C:
-				c.SSEvent("ping", nil)
-			case result, ok := <-resultChan:
-				if !ok {
+		go ExecuteEnv(env, d.Provision)
+		/*
+			t := time.NewTicker(time.Second * 30)
+			for {
+				select {
+				case <-c.Request.Context().Done():
 					return
+				case <-t.C:
+					c.SSEvent("ping", nil)
+				case result, ok := <-resultChan:
+					if !ok {
+						return
+					}
+					out, _ := jsoniter.ConfigFastest.Marshal(result)
+					c.SSEvent("result", string(out))
 				}
-				out, _ := jsoniter.ConfigFastest.Marshal(result)
-				c.SSEvent("result", string(out))
 			}
-		}
+		*/
 	})
 
 	serv.API().PUT("/config/:env/:sys", func(c *gin.Context) {
@@ -193,23 +217,25 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
 		}
-		resultChan := make(chan string)
-		go ExecuteSys(env, sys, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
-		t := time.NewTicker(time.Second * 30)
-		for {
-			select {
-			case <-c.Request.Context().Done():
-				return
-			case <-t.C:
-				c.SSEvent("ping", nil)
-			case result, ok := <-resultChan:
-				if !ok {
+		go ExecuteSys(env, sys, d.ProvisionSystem)
+		/*
+			resultChan := make(chan string)
+			t := time.NewTicker(time.Second * 30)
+			for {
+				select {
+				case <-c.Request.Context().Done():
 					return
+				case <-t.C:
+					c.SSEvent("ping", nil)
+				case result, ok := <-resultChan:
+					if !ok {
+						return
+					}
+					out, _ := jsoniter.ConfigFastest.Marshal(result)
+					c.SSEvent("result", string(out))
 				}
-				out, _ := jsoniter.ConfigFastest.Marshal(result)
-				c.SSEvent("result", string(out))
 			}
-		}
+		*/
 	})
 
 	serv.API().PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
@@ -225,23 +251,7 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
 		}
-		resultChan := make(chan string)
-		go func(c *gin.Context) {
-			t := time.NewTicker(time.Second * 30)
-			for {
-				select {
-				case <-c.Request.Context().Done():
-					return
-				case <-t.C:
-					c.SSEvent("ping", nil)
-				}
-			}
-		}(c)
-		go ExecuteCluster(env, sys, cluster, sagaChan, ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg), resultChan)
-		for result := range resultChan {
-			out, _ := jsoniter.ConfigFastest.Marshal(result)
-			c.SSEvent("result", string(out))
-		}
+		go ExecuteCluster(env, sys, cluster, d.ProvisionCluster)
 	})
 
 	serv.API().PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {

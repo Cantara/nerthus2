@@ -4,8 +4,28 @@ import (
 	log "github.com/cantara/bragi/sbragi"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
+	vpce "github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc"
 	"github.com/cantara/nerthus2/cloud/aws/vpc"
 )
+
+func Adapter(c *ec2.Client) adapter.Adapter {
+	return adapter.New[string]("AddNewInternetGateway").Adapter(func(a []adapter.Value) (ig string, err error) {
+		v := vpce.Fingerprint.Value(a[0])
+		ig, err = vpc.NewIG(v, c)
+		if err != nil {
+			log.WithError(err).Error("while creating ig")
+			return "", err
+		}
+		err = vpc.AddIGtoRT(v.Id, ig, c)
+		if err != nil {
+			log.WithError(err).Error("while adding ig to rt")
+			return "", err
+		}
+		return
+
+	}, vpce.Fingerprint)
+}
 
 type data struct {
 	c *ec2.Client
