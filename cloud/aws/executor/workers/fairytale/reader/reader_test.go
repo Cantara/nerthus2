@@ -14,6 +14,7 @@ import (
 	"github.com/cantara/gober/consensus"
 	"github.com/cantara/gober/discovery/local"
 	"github.com/cantara/gober/stream"
+	"github.com/cantara/gober/stream/event/store/inmemory"
 	"github.com/cantara/gober/stream/event/store/ondisk"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/story"
@@ -167,7 +168,7 @@ func TestCrazyTown(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctxGlobal, ctxGlobalCancel = context.WithCancel(context.Background())
-	store, err := ondisk.Init(STREAM_NAME, ctxGlobal)
+	store, err := inmemory.Init(STREAM_NAME, ctxGlobal)
 	if err != nil {
 		t.Fatal(err)
 	}
