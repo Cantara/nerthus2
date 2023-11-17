@@ -21,8 +21,8 @@ github.com/acomagu/bufpipe v1.0.4 h1:e3H4WUzM3npvo5uv95QuJM3cQspFNtFBzvJ2oNjKIDQ
 github.com/acomagu/bufpipe v1.0.4/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
-github.com/apenella/go-ansible v1.2.0 h1:tZf2RMaoZE15ys+3pkCBgTRffVjRNmR0gQarbRQgS4s=
-github.com/apenella/go-ansible v1.2.0/go.mod h1:+RsBk+35iEWfp2iFhsdZ9JTE9KNbuPjIILyO6UQHV3E=
+github.com/apenella/go-ansible v1.2.1 h1:gBeraZAvA3w7JarUBjt2QWk65x+J1C4CNssh7AhF6Ts=
+github.com/apenella/go-ansible v1.2.1/go.mod h1:+RsBk+35iEWfp2iFhsdZ9JTE9KNbuPjIILyO6UQHV3E=
 github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df h1:sEikY2P+NZK/7VZUwIsnXIGElhsuFDSxh1bZYwHxdcI=
 github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df/go.mod h1:cLVL6GjUiKG/WyBzX+KD6h/XRV/HnNZIZbMNNiBgQ9o=
 github.com/apenella/go-common-utils/error v0.0.0-20220913191136-86daaa87e7df h1:SvlYbjlsSQDS7hbVT1h012/zdgvcwWJ+Yd9XRiiY/8s=
