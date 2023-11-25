@@ -116,19 +116,20 @@ func (d provisioner) ProvisionCluster(cluster system.Cluster, sys system.System,
 		log.WithError(err).Fatal("os arch should be verified before here")
 	}
 	p := start.Start{
-		Env:     env,
-		System:  sys.Name,
-		Cluster: cluster.Name,
-		OSName:  sys.OSName,
-		Arch:    a,
-		Network: sys.CIDR,
-		Nodes:   cluster.NodeNames,
-		Size:    cluster.InstanceType,
-		Nerthus: nerthus,
-		Visuale: visuale,
-		Path:    cluster.GetWebserverPath(), //FixMe: This needs to be fixed
-		Port:    cluster.GetWebserverPort(),
-		Base:    cluster.DNSRoot,
+		Env:      env,
+		System:   sys.Name,
+		Cluster:  cluster.Name,
+		OSName:   sys.OSName,
+		Arch:     a,
+		Network:  sys.CIDR,
+		Nodes:    cluster.NodeNames,
+		Size:     cluster.InstanceType,
+		DiskSize: cluster.DiskSize(),
+		Nerthus:  nerthus,
+		Visuale:  visuale,
+		Path:     cluster.GetWebserverPath(), //FixMe: This needs to be fixed
+		Port:     cluster.GetWebserverPort(),
+		Base:     cluster.DNSRoot,
 	}
 	b, err := json.Marshal(p)
 	if err != nil {

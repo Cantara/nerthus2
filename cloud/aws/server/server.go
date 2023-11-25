@@ -112,7 +112,7 @@ func NameAvailable(name string, e2 *ec2.Client) (available bool, err error) {
 	return
 }
 
-func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
+func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, diskSize int, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
 	s, err := GetServer(node, e2)
 	if err != nil {
 		if !errors.Is(err, ErrServerNotFound) {
@@ -170,7 +170,7 @@ func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, 
 			{
 				DeviceName: &s.ami.RootDev,
 				Ebs: &ec2types.EbsBlockDevice{
-					VolumeSize: aws.Int32(30),
+					VolumeSize: aws.Int32(int32(diskSize)),
 					VolumeType: "gp3",
 				},
 			},

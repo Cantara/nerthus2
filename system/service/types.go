@@ -1,5 +1,12 @@
 package service
 
+import (
+	"strconv"
+	"strings"
+
+	"github.com/cantara/bragi/sbragi"
+)
+
 type Service struct {
 	Name         string       `yaml:"name"`
 	ServiceType  string       `yaml:"service_type"`
@@ -10,7 +17,7 @@ type Service struct {
 }
 type Requirements struct {
 	RAM              string   `yaml:"ram"`
-	Disk             string   `yaml:"disk"`
+	Disk             ByteSize `yaml:"disk"`
 	CPU              int      `yaml:"cpu"`
 	PropertiesName   string   `yaml:"properties_name"`
 	WebserverPortKey string   `yaml:"webserver_port_key"`
@@ -26,4 +33,56 @@ type Artifact struct {
 	Snapshot string `yaml:"snapshot"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
+}
+type ByteSize string
+
+const (
+	_ = 1 << (10 * iota)
+	KB
+	MB
+	GB
+	TB
+	PB
+)
+
+func (size ByteSize) ToGB() int {
+	switch strings.ToUpper(string(size[len(size)-2:])) {
+	case "KB":
+		size, err := strconv.Atoi(string(size[:len(size)-2]))
+		if err != nil {
+			sbragi.WithError(err).Error("while getting KB size")
+			return 0
+		}
+		return int((float64(size*KB) + (0.5 * GB)) / GB)
+	case "MB":
+		size, err := strconv.Atoi(string(size[:len(size)-2]))
+		if err != nil {
+			sbragi.WithError(err).Error("while getting MB size")
+			return 0
+		}
+		return int((float64(size*MB) + (0.5 * GB)) / GB)
+	case "GB":
+		size, err := strconv.Atoi(string(size[:len(size)-2]))
+		if err != nil {
+			sbragi.WithError(err).Error("while getting GB size")
+			return 0
+		}
+		return size
+	case "TB":
+		size, err := strconv.Atoi(string(size[:len(size)-2]))
+		if err != nil {
+			sbragi.WithError(err).Error("while getting TB size")
+			return 0
+		}
+		return size * TB / GB
+	case "PB":
+		size, err := strconv.Atoi(string(size[:len(size)-2]))
+		if err != nil {
+			sbragi.WithError(err).Error("while getting PB size")
+			return 0
+		}
+		return size * PB / GB
+	}
+	sbragi.Error("should not be hit", "size", size[len(size)-2:])
+	return 0
 }

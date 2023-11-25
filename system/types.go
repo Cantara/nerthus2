@@ -98,6 +98,7 @@ func (c Cluster) GetWebserverPort() int {
 	}
 	return -1
 }
+
 func (c Cluster) GetWebserverPath() string {
 	for _, serv := range c.Services {
 		if serv.ServiceInfo.APIPath != "" {
@@ -123,6 +124,14 @@ func (c Cluster) IsClusterAble() bool {
 		}
 	}
 	return true
+}
+
+func (c Cluster) DiskSize() (size int) {
+	size = 30
+	for _, serv := range c.Services {
+		size += serv.ServiceInfo.Requirements.Disk.ToGB()
+	}
+	return
 }
 
 type Service struct {

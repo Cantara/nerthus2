@@ -28,7 +28,7 @@ func Adapter(c *ec2.Client) adapter.Adapter {
 		servs := make([]server.Server, len(d.Nodes))
 		var ids []string
 		for i := range d.Nodes {
-			s, err := server.Create(i, d.Nodes[i], d.Cluster, d.System, d.Env, d.Size, subnets[i%len(subnets)], d.Nerthus, d.Visuale, img, k, sg, c)
+			s, err := server.Create(i, d.Nodes[i], d.Cluster, d.System, d.Env, d.Size, subnets[i%len(subnets)], d.Nerthus, d.Visuale, d.DiskSize, img, k, sg, c)
 			log.WithError(err).Trace("while creating nodes", "env", d.Env, "system", d.System, "cluster", d.Cluster, "image", img.HName, "subnets", subnets, "node", i)
 			if err != nil {
 				return nil, err
@@ -72,7 +72,7 @@ func Executor(num int, node, cluster, system, env, size, nerthus, visuale string
 
 func (d *data) Execute() (server.Server, error) {
 	log.Debug("executing node")
-	s, err := server.Create(d.num, d.name, d.cluster, d.system, d.env, d.size, d.subnets[d.num%len(d.subnets)], d.nerthus, d.visuale, *d.img, *d.key, *d.sg, d.c)
+	s, err := server.Create(d.num, d.name, d.cluster, d.system, d.env, d.size, d.subnets[d.num%len(d.subnets)], d.nerthus, d.visuale, 30, *d.img, *d.key, *d.sg, d.c)
 	if err != nil {
 		log.WithError(err).Error("while creating nodes", "env", d.env, "system", d.system, "cluster", d.cluster, "image", d.img.HName, "subnets", d.subnets, "node", d.num)
 		return server.Server{}, err
