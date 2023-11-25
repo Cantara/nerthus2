@@ -1,26 +1,35 @@
 package rule
 
 import (
+	"fmt"
+
 	log "github.com/cantara/bragi/sbragi"
 
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/listener"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/tg"
 	"github.com/cantara/nerthus2/cloud/aws/loadbalancer"
+	"github.com/cantara/nerthus2/system"
 )
 
 var Fingerprint = adapter.New[loadbalancer.Rule]("CreateRule")
 
 func Adapter(c *elbv2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (r loadbalancer.Rule, err error) {
-		l := listener.Fingerprint.Value(a[0])
-		t := tg.Fingerprint.Value(a[1])
-		r, err = loadbalancer.CreateRule(l, t, c)
+		s := start.Fingerprint.Value(a[0])
+		l := listener.Fingerprint.Value(a[1])
+		t := tg.Fingerprint.Value(a[2])
+		if s.Routing == system.RoutingHost {
+			r, err = loadbalancer.CreateRuleHost(l, t, fmt.Sprintf("%s-%s.%s", s.System, s.Cluster, s.Domain), c)
+		} else {
+			r, err = loadbalancer.CreateRulePath(l, t, c)
+		}
 		log.WithError(err).Trace("while creating rule", "listener", l, "target_group", t)
 		return
 
-	}, listener.Fingerprint, tg.Fingerprint)
+	}, start.Fingerprint, listener.Fingerprint, tg.Fingerprint)
 }
 
 type data struct {
@@ -38,7 +47,7 @@ func Executor(c *elbv2.Client) *data {
 func (d *data) Execute() (any, error) {
 	log.Trace("executing rule")
 
-	_, err := loadbalancer.CreateRule(*d.listner, *d.tg, d.c)
+	_, err := loadbalancer.CreateRulePath(*d.listner, *d.tg, d.c)
 	if err != nil {
 		log.WithError(err).Error("while creating rule")
 		return nil, err

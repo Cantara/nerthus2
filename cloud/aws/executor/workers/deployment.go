@@ -130,6 +130,8 @@ func (d provisioner) ProvisionCluster(cluster system.Cluster, sys system.System,
 		Path:     cluster.GetWebserverPath(), //FixMe: This needs to be fixed
 		Port:     cluster.GetWebserverPort(),
 		Base:     cluster.DNSRoot,
+		Routing:  sys.RoutingMethod,
+		Domain:   sys.Domain,
 	}
 	b, err := json.Marshal(p)
 	if err != nil {

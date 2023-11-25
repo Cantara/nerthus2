@@ -40,7 +40,7 @@ func GetRules(listenerARN string, elb *elbv2.Client) (r []Rule, err error) {
 	return
 }
 
-func CreateRule(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err error) { //TODO: Need to extend this to support host and default routes
+func CreateRulePath(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err error) { //TODO: Need to extend this to support host and default routes
 	highestPriority, err := l.GetHighestPriority(elb)
 	if err != nil {
 		return
@@ -60,6 +60,37 @@ func CreateRule(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err erro
 				Values: []string{
 					path,
 					path + "/*",
+				},
+			},
+		},
+		ListenerArn: aws.String(string(l)),
+		Priority:    aws.Int32(int32(highestPriority + 1)),
+	})
+	if err != nil {
+		return
+	}
+	r.ARN = aws.ToString(result.Rules[0].RuleArn)
+	return
+}
+
+func CreateRuleHost(l Listener, tg TargetGroup, hostHeader string, elb *elbv2.Client) (r Rule, err error) { //TODO: Need to extend this to support host and default routes
+	highestPriority, err := l.GetHighestPriority(elb)
+	if err != nil {
+		return
+	}
+
+	result, err := elb.CreateRule(context.Background(), &elbv2.CreateRuleInput{
+		Actions: []elbv2types.Action{
+			{
+				TargetGroupArn: aws.String(tg.ARN),
+				Type:           "forward",
+			},
+		},
+		Conditions: []elbv2types.RuleCondition{
+			{
+				Field: aws.String("host-header"),
+				Values: []string{
+					hostHeader,
 				},
 			},
 		},
