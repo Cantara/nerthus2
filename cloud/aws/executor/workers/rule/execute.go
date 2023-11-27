@@ -21,10 +21,12 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		s := start.Fingerprint.Value(a[0])
 		l := listener.Fingerprint.Value(a[1])
 		t := tg.Fingerprint.Value(a[2])
-		if s.Routing == system.RoutingHost {
-			r, err = loadbalancer.CreateRuleHost(l, t, fmt.Sprintf("%s-%s.%s", s.System, s.Cluster, s.Domain), c)
-		} else {
+		if s.Routing == system.RoutingPath {
 			r, err = loadbalancer.CreateRulePath(l, t, c)
+		} else if s.IsFrontend {
+			r, err = loadbalancer.CreateRuleDefault(l, t, c)
+		} else {
+			r, err = loadbalancer.CreateRuleHost(l, t, fmt.Sprintf("%s-%s.%s", s.System, s.Cluster, s.Domain), c)
 		}
 		log.WithError(err).Trace("while creating rule", "listener", l, "target_group", t)
 		return

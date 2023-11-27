@@ -40,6 +40,24 @@ func GetRules(listenerARN string, elb *elbv2.Client) (r []Rule, err error) {
 	return
 }
 
+func CreateRuleDefault(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err error) { //TODO: Need to extend this to support host and default routes
+	result, err := elb.ModifyListener(context.Background(), &elbv2.ModifyListenerInput{
+		DefaultActions: []elbv2types.Action{
+			{
+				TargetGroupArn: aws.String(tg.ARN),
+				Type:           "forward",
+			},
+		},
+
+		ListenerArn: aws.String(string(l)),
+	})
+	if err != nil {
+		return
+	}
+	r.ARN = aws.ToString(result.Listeners[0].ListenerArn) //This might be confusing. But setting rule arn to listener arn as it is the default rule and thus is only assisiated with the listener
+	return
+}
+
 func CreateRulePath(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err error) { //TODO: Need to extend this to support host and default routes
 	highestPriority, err := l.GetHighestPriority(elb)
 	if err != nil {

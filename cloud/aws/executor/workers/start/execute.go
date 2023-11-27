@@ -8,22 +8,23 @@ import (
 )
 
 type Start struct {
-	Env      string               `json:"env"`
-	System   string               `json:"system"`
-	Cluster  string               `json:"cluster"`
-	OSName   string               `json:"os_name"`
-	Arch     ami.Arch             `json:"arch"`
-	Network  string               `json:"network"`
-	Nodes    []string             `json:"node_names"`
-	Size     string               `json:"size"`
-	DiskSize int                  `json:"disk_size"`
-	Nerthus  string               `json:"nerthus"`
-	Visuale  string               `json:"visuale"`
-	Path     string               `json:"path"`
-	Port     int                  `json:"port"`
-	Base     string               `json:"base"`
-	Routing  system.RoutingMethod `json:"routing"`
-	Domain   string               `json:"domain"`
+	Env        string               `json:"env"`
+	System     string               `json:"system"`
+	Cluster    string               `json:"cluster"`
+	OSName     string               `json:"os_name"`
+	Arch       ami.Arch             `json:"arch"`
+	Network    string               `json:"network"`
+	Nodes      []string             `json:"node_names"`
+	Size       string               `json:"size"`
+	DiskSize   int                  `json:"disk_size"`
+	Nerthus    string               `json:"nerthus"`
+	Visuale    string               `json:"visuale"`
+	Path       string               `json:"path"`
+	Port       int                  `json:"port"`
+	Base       string               `json:"base"`
+	Routing    system.RoutingMethod `json:"routing"`
+	Domain     string               `json:"domain"`
+	IsFrontend bool                 `json:"is_frontend"`
 }
 
 var Fingerprint = adapter.New[Start](story.AdapterStart)
