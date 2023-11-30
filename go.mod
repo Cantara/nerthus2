@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/apenella/go-ansible v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.23.4
-	github.com/aws/aws-sdk-go-v2/config v1.25.9
+	github.com/aws/aws-sdk-go-v2/config v1.25.10
 	github.com/aws/aws-sdk-go-v2/service/acm v1.22.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.138.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.25.2
@@ -35,16 +35,16 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df // indirect
 	github.com/apenella/go-common-utils/error v0.0.0-20220913191136-86daaa87e7df // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.16.7 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.7 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.6 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.6 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.16.8 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.8 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.7 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.18.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.26.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.18.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.26.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
