@@ -32,7 +32,7 @@ type Fingerprint interface {
 	New() any
 }
 
-type base[T any] interface {
+type FingerprintBase[T any] interface {
 	Name() string
 	Type() string
 	Adapter(ExecFunc[T], ...Fingerprint) Adapter
@@ -88,7 +88,7 @@ func (af fingerprint[T]) Type() string {
 	return af.ot
 }
 
-func New[T any](name string) base[T] {
+func New[T any](name string) FingerprintBase[T] {
 	var t T
 	return fingerprint[T]{
 		name: name,
@@ -127,6 +127,18 @@ types:
 			if used[i] {
 				continue
 			}
+			if req.Type() == "" { //FIXME: Kimoi
+				var v map[string]any
+				err = json.Unmarshal(d.Data, &v)
+				log.WithError(err).Trace("unmarshaling", "t", v, "b", string(d.Data), "it", Name(v), "ot", a.ot)
+				if err != nil {
+					continue
+				}
+				used[i] = true
+				ts[j] = v
+				continue types
+			}
+			log.Info("data", "type", d.Type, "req", req.Type())
 			if d.Type != req.Type() {
 				continue
 			}

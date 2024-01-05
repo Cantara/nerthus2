@@ -10,17 +10,16 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
 	vpce "github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc"
 	"github.com/cantara/nerthus2/cloud/aws/security"
-	"github.com/cantara/nerthus2/cloud/aws/vpc"
 )
 
 var Fingerprint = adapter.New[security.Group]("CreateLoadbalancerSecurityGroup")
 
 func Adapter(c *ec2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (sg security.Group, err error) {
-		i := start.Fingerprint.Value(a[0])
+		env := start.Fingerprint.Value(a[0])
 		v := vpce.Fingerprint.Value(a[1])
-		name := fmt.Sprintf("%s-%s-lb", i.Env, i.System)
-		sg, err = security.New(i.Env, name, v.Id, c)
+		name := fmt.Sprintf("%s-%s-lb", env.Name, env.System.Name)
+		sg, err = security.New(env.Name, name, v.Id, c)
 		if err != nil {
 			log.WithError(err).Error("while creating new security group")
 			return
@@ -33,39 +32,4 @@ func Adapter(c *ec2.Client) adapter.Adapter {
 		return
 
 	}, start.Fingerprint, vpce.Fingerprint)
-}
-
-type data struct {
-	c      *ec2.Client
-	env    string
-	system string
-	name   string
-	v      vpc.VPC
-}
-
-func Executor(env, system string, c *ec2.Client) *data {
-	return &data{
-		c:      c,
-		env:    env,
-		system: system,
-		name:   fmt.Sprintf("%s-%s-lb", env, system),
-	}
-}
-
-func (d *data) Execute() (sg security.Group, err error) {
-	sg, err = security.New(d.env, d.name, d.v.Id, d.c)
-	if err != nil {
-		log.WithError(err).Error("while creating new security group")
-		return
-	}
-	err = sg.AddLoadbalancerPublicAccess(d.c)
-	if err != nil {
-		log.WithError(err).Error("while setting public access to loadbalancer")
-		return
-	}
-	return
-}
-
-func (d *data) VPC(v vpc.VPC) {
-	d.v = v
 }

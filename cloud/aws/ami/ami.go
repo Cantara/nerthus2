@@ -11,46 +11,16 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/nerthus2/config/schema"
 )
 
 const DateFormat = "2006-01-02T15:04:05Z" //YYYY-MM-DDTHH:MM:SSZ
-
-type Arch int
-
-const (
-	AMD64 Arch = iota + 1
-	ARM64
-)
-
-func (a Arch) String() string {
-	switch a {
-	case AMD64:
-		return "x86_64"
-	case ARM64:
-		return "arm64"
-	}
-	return "INVALID ARCH"
-}
-
-func StringToArch(s string) (Arch, error) {
-	switch strings.ToUpper(s) {
-	case "X86-64":
-		fallthrough
-	case "X86_64":
-		fallthrough
-	case "AMD64":
-		return AMD64, nil
-	case "ARM64":
-		return ARM64, nil
-	}
-	return 0, fmt.Errorf("%s is not a valid arch", s)
-}
 
 type Image struct {
 	Id        string
 	Name      string
 	HName     string
-	Arch      Arch
+	Arch      schema.Arch
 	RootDev   string
 	created   time.Time
 	depreated time.Time
@@ -85,7 +55,7 @@ func (img Image) Username() string {
 
 var imageCache []Image //Needs syncronization
 
-func GetImage(name string, arch Arch, e2 *ec2.Client) (newest Image, err error) {
+func GetImage(name string, arch schema.Arch, e2 *ec2.Client) (newest Image, err error) {
 	log.Trace("getting image", "name", name, "arch", arch, "cache", imageCache)
 	for i, img := range imageCache {
 		if img.Arch != arch {
@@ -135,7 +105,7 @@ func GetImage(name string, arch Arch, e2 *ec2.Client) (newest Image, err error) 
 			continue
 		}
 		log.Trace("Looking for image", "name", name, "found", *img.Name)
-		arch, _ := StringToArch(string(img.Architecture))
+		arch, _ := schema.StringToArch(string(img.Architecture))
 		created, _ := time.Parse(*img.CreationDate, DateFormat)
 		depreated, _ := time.Parse(*img.DeprecationTime, DateFormat)
 		images[i] = Image{

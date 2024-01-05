@@ -24,8 +24,8 @@ var Fingerprint = adapter.New[acm.Cert]("CreateOrGetCert")
 func Adapter(ac *awsacm.Client, rc *route53.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (cert acm.Cert, err error) {
 		//base, _ := adapter.Value[string](a[0])
-		i := start.Fingerprint.Value(a[0])
-		name := fmt.Sprintf("*.%s", i.Base)
+		env := start.Fingerprint.Value(a[0])
+		name := fmt.Sprintf("*.%s", env.System.Domain)
 		log.Trace("executing cert")
 
 		cert, err = acm.GetCert(name, ac)
@@ -46,7 +46,7 @@ func Adapter(ac *awsacm.Client, rc *route53.Client) adapter.Adapter {
 			log.WithError(err).Error("while getting cert domain validation")
 			return
 		}
-		zone, err := dns.GetHostedZoneId(i.Base, rc)
+		zone, err := dns.GetHostedZoneId(env.System.Domain, rc)
 		if err != nil {
 			log.WithError(err).Error("while getting cert domain hosted zone")
 			return

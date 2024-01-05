@@ -11,56 +11,38 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/tg"
 	"github.com/cantara/nerthus2/cloud/aws/loadbalancer"
-	"github.com/cantara/nerthus2/system"
+	"github.com/cantara/nerthus2/config/schema"
 )
 
 var Fingerprint = adapter.New[loadbalancer.Rule]("CreateRule")
 
 func Adapter(c *elbv2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (r loadbalancer.Rule, err error) {
-		s := start.Fingerprint.Value(a[0])
+		env := start.Fingerprint.Value(a[0])
 		l := listener.Fingerprint.Value(a[1])
-		t := tg.Fingerprint.Value(a[2])
-		if s.Routing == system.RoutingPath {
-			r, err = loadbalancer.CreateRulePath(l, t, c)
-		} else if s.IsFrontend {
-			r, err = loadbalancer.CreateRuleDefault(l, t, c)
-		} else {
-			r, err = loadbalancer.CreateRuleHost(l, t, fmt.Sprintf("%s-%s.%s", s.System, s.Cluster, s.Domain), c)
+		tgs := tg.Fingerprint.Value(a[2])
+		//For now do not split the cluster executions
+		var extra string
+		if env.Name != env.System.Name {
+			extra = fmt.Sprintf("-%s", env.System.Name)
 		}
-		log.WithError(err).Trace("while creating rule", "listener", l, "target_group", t)
+		if env.System.Name != env.System.Cluster.Name {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.Name)
+		}
+		dnsName := fmt.Sprintf("%s%s.%s", env.Name, extra, env.System.Domain)
+		for _, tg := range tgs {
+			if env.System.RoutingMethod == schema.PathRouting {
+				r, err = loadbalancer.CreateRulePath(l, tg, c)
+			} else if env.System.Cluster.HasFrontend() {
+				r, err = loadbalancer.CreateRuleDefault(l, tg, c)
+			} else {
+				r, err = loadbalancer.CreateRuleHost(l, tg, dnsName, c)
+			}
+			if log.WithError(err).Trace("while creating rule", "listener", l, "target_group", tg) {
+				return
+			}
+		}
 		return
 
 	}, start.Fingerprint, listener.Fingerprint, tg.Fingerprint)
-}
-
-type data struct {
-	c       *elbv2.Client
-	listner *loadbalancer.Listener
-	tg      *loadbalancer.TargetGroup
-}
-
-func Executor(c *elbv2.Client) *data {
-	return &data{
-		c: c,
-	}
-}
-
-func (d *data) Execute() (any, error) {
-	log.Trace("executing rule")
-
-	_, err := loadbalancer.CreateRulePath(*d.listner, *d.tg, d.c)
-	if err != nil {
-		log.WithError(err).Error("while creating rule")
-		return nil, err
-	}
-	return nil, nil
-}
-
-func (d *data) Listener(l loadbalancer.Listener) {
-	d.listner = &l
-}
-
-func (d *data) TG(tg loadbalancer.TargetGroup) {
-	d.tg = &tg
 }

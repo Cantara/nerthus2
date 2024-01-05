@@ -1,8 +1,0 @@
-name: Install Git
-tasks:
-  - name: Install Git
-    ansible.builtin.yum:
-      name: git
-      state: latest
-    become: yes
-    become_user: root

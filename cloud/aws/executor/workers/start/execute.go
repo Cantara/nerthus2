@@ -1,12 +1,13 @@
 package start
 
 import (
-	"github.com/cantara/nerthus2/cloud/aws/ami"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/story"
-	"github.com/cantara/nerthus2/system"
+	"github.com/cantara/nerthus2/config"
+	"github.com/cantara/nerthus2/config/schema"
 )
 
+/*
 type Start struct {
 	Env        string               `json:"env"`
 	System     string               `json:"system"`
@@ -26,8 +27,25 @@ type Start struct {
 	Domain     string               `json:"domain"`
 	IsFrontend bool                 `json:"is_frontend"`
 }
+*/
 
-var Fingerprint = adapter.New[Start](story.AdapterStart)
-var Adapter = Fingerprint.Adapter(func(a []adapter.Value) (s Start, err error) {
+type Environment struct {
+	Name       string `json:"name"`
+	NerthusURL string `json:"nerthus_url"`
+	VisualeURL string `json:"visuale_url"`
+	System     System `json:"system"`
+}
+
+type System struct {
+	Name          string               `json:"name"`
+	Domain        string               `json:"domain"`
+	RoutingMethod schema.RoutingMethod `json:"routing_method"`
+	Cidr          string               `json:"cidr"`
+	Zone          string               `json:"zone"`
+	Cluster       config.Cluster       `json:"cluster"`
+}
+
+var Fingerprint = adapter.New[Environment](story.AdapterStart)
+var Adapter = Fingerprint.Adapter(func(a []adapter.Value) (s Environment, err error) {
 	return Fingerprint.Value(a[0]), nil
 }, Fingerprint)

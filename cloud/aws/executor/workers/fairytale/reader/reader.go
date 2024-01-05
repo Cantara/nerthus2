@@ -27,6 +27,14 @@ var StartAdapter = StartAdapterFingerprint.Adapter(func(n []adapter.Value) (stru
 	return struct{}{}, nil
 })
 
+func RepeatFingerprintAndAdapter[T any](name string) (adapter.FingerprintBase[T], adapter.Adapter) {
+	f := adapter.New[T](name)
+	return f, f.Adapter(func(n []adapter.Value) (T, error) {
+		log.Info("start", "n", n)
+		return f.Value(n[0]), nil
+	}, f)
+}
+
 /*
 func startFunc[T any](b interface{ Value(adapter.Value) (t T) }) func(n []adapter.Value) (T, error) {
 	var t T

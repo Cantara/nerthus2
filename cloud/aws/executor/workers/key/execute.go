@@ -15,8 +15,8 @@ var Fingerprint = adapter.New[key.Key]("NewKey")
 
 func Adapter(c *ec2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (k key.Key, err error) {
-		i := start.Fingerprint.Value(a[0])
-		k, err = key.New(fmt.Sprintf("%s-%s-key", i.Env, i.System), c)
+		env := start.Fingerprint.Value(a[0])
+		k, err = key.New(fmt.Sprintf("%s-%s-key", env.Name, env.System.Name), c)
 		log.WithError(err).Trace("creating key")
 		return
 	}, start.Fingerprint)

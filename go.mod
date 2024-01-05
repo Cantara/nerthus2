@@ -1,21 +1,21 @@
 module github.com/cantara/nerthus2
 
-go 1.21
+go 1.21.5
 
 require (
-	github.com/apenella/go-ansible v1.2.2
+	cuelang.org/go v0.6.0
+	github.com/apenella/go-ansible v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.24.1
-	github.com/aws/aws-sdk-go-v2/config v1.26.3
-	github.com/aws/aws-sdk-go-v2/service/acm v1.22.7
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.142.1
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.26.7
-	github.com/aws/aws-sdk-go-v2/service/iam v1.28.7
-	github.com/aws/aws-sdk-go-v2/service/rds v1.66.2
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.36.1
+	github.com/aws/aws-sdk-go-v2/config v1.25.5
+	github.com/aws/aws-sdk-go-v2/service/acm v1.21.3
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.137.1
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.24.3
+	github.com/aws/aws-sdk-go-v2/service/iam v1.27.3
+	github.com/aws/aws-sdk-go-v2/service/rds v1.63.1
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.34.3
 	github.com/aws/smithy-go v1.19.0
 	github.com/cantara/bragi v0.7.4
 	github.com/cantara/gober v0.18.7
-	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.10.1
 	github.com/gofrs/uuid v4.3.1+incompatible
@@ -23,10 +23,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/microsoft/go-mssqldb v1.6.0
 	github.com/modern-go/reflect2 v1.0.2
-	github.com/pkg/errors v0.9.1
-	go.mongodb.org/mongo-driver v1.13.1
-	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.1
+	go.mongodb.org/mongo-driver v1.12.1
 )
 
 require (
@@ -48,10 +45,13 @@ require (
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/cockroachdb/apd/v3 v3.2.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/emicklei/proto v1.10.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
@@ -67,6 +67,7 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -75,11 +76,15 @@ require (
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/montanaflynn/stats v0.7.0 // indirect
+	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/protocolbuffers/txtpbfmt v0.0.0-20230328191034-3462fbc510c0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
@@ -102,5 +107,7 @@ require (
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.10 // indirect
 )

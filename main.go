@@ -3,15 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"embed"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -39,17 +36,12 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers"
 	"github.com/cantara/nerthus2/cloud/aws/security"
 	"github.com/cantara/nerthus2/cloud/aws/server"
-	"github.com/cantara/nerthus2/config/properties"
 	"github.com/cantara/nerthus2/message"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	gitHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
-
-//go:embed bootstrap
-var EFS embed.FS
 
 var bootstrap bool
 var gitRepo string
@@ -75,6 +67,12 @@ func init() {
 	flag.StringVar(&gitToken, "t", defaultGitToken, gitTokenUsage+" (shorthand)")
 	flag.StringVar(&bootstrapEnv, "environment", defaultSystemName, systemNameUsage)
 	flag.StringVar(&bootstrapEnv, "e", defaultSystemName, systemNameUsage+" (shorthand)")
+}
+
+type environment struct {
+	GitToken string `json:"git_token"`
+	GitRepo  string `json:"git_repo"`
+	EnvName  string `json:"name"`
 }
 
 func main() {
@@ -128,12 +126,12 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("while initializing public key stream")
 	}
-	environments, err := eventmap.Init[properties.BootstrapVars](envStream, "environment", "v0.0.1",
+	environments, err := eventmap.Init[environment](envStream, "environment", "v0.0.1",
 		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx)
 	//TODO: If bootstrap add local users ssh key to map and add key on bootstrap
 
 	if bootstrap {
-		err = environments.Set(bootstrapEnv, properties.BootstrapVars{
+		err = environments.Set(bootstrapEnv, environment{
 			GitToken: gitToken,
 			GitRepo:  gitRepo,
 			EnvName:  bootstrapEnv,
@@ -149,7 +147,7 @@ func main() {
 		return
 	}
 	if environments.Len() == 0 {
-		err = environments.Set(os.Getenv("boot_env"), properties.BootstrapVars{
+		err = environments.Set(os.Getenv("boot_env"), environment{
 			GitToken: os.Getenv("git.token"),
 			GitRepo:  os.Getenv("git.repo"),
 			EnvName:  os.Getenv("boot_env"),
@@ -206,71 +204,74 @@ func main() {
 		*/
 	})
 
-	serv.API().PUT("/config/:env/:sys", func(c *gin.Context) {
-		env := c.Params.ByName("env")
-		if ok := environments.Exists(env); !ok {
-			c.AbortWithStatus(404)
-			return
-		}
-		sys := c.Params.ByName("sys")
-		_, err := GitCloneEnvironment(env, environments)
-		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
-		}
-		go ExecuteSys(env, sys, d.ProvisionSystem)
-		/*
-			resultChan := make(chan string)
-			t := time.NewTicker(time.Second * 30)
-			for {
-				select {
-				case <-c.Request.Context().Done():
-					return
-				case <-t.C:
-					c.SSEvent("ping", nil)
-				case result, ok := <-resultChan:
-					if !ok {
-						return
-					}
-					out, _ := jsoniter.ConfigFastest.Marshal(result)
-					c.SSEvent("result", string(out))
-				}
+	/*
+		serv.API().PUT("/config/:env/:sys", func(c *gin.Context) {
+			env := c.Params.ByName("env")
+			if ok := environments.Exists(env); !ok {
+				c.AbortWithStatus(404)
+				return
 			}
-		*/
-	})
+			sys := c.Params.ByName("sys")
+			_, err := GitCloneEnvironment(env, environments)
+			if err != nil {
+				log.WithError(err).Fatal("while cloning git repo during system execution", "env", env, "system", sys)
+			}
+			go ExecuteSys(env, sys, d.ProvisionSystem)
+			/*
+				resultChan := make(chan string)
+				t := time.NewTicker(time.Second * 30)
+				for {
+					select {
+					case <-c.Request.Context().Done():
+						return
+					case <-t.C:
+						c.SSEvent("ping", nil)
+					case result, ok := <-resultChan:
+						if !ok {
+							return
+						}
+						out, _ := jsoniter.ConfigFastest.Marshal(result)
+						c.SSEvent("result", string(out))
+					}
+				}
+	*/
+	//})
 
-	serv.API().PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
-		env := c.Params.ByName("env")
-		if ok := environments.Exists(env); !ok {
-			log.Warning("put aborted", "env", env, "envs", environments.Keys())
-			c.AbortWithStatus(404)
-			return
-		}
-		sys := c.Params.ByName("sys")
-		cluster := c.Params.ByName("cluster")
-		_, err := GitCloneEnvironment(env, environments)
-		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
-		}
-		go ExecuteCluster(env, sys, cluster, d.ProvisionCluster)
-	})
+	/*
+		serv.API().PUT("/config/:env/:sys/:cluster", func(c *gin.Context) {
+			env := c.Params.ByName("env")
+			if ok := environments.Exists(env); !ok {
+				log.Warning("put aborted", "env", env, "envs", environments.Keys())
+				c.AbortWithStatus(404)
+				return
+			}
+			sys := c.Params.ByName("sys")
+			cluster := c.Params.ByName("cluster")
+			_, err := GitCloneEnvironment(env, environments)
+			if err != nil {
+				log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster)
+			}
+			go ExecuteCluster(env, sys, cluster, d.ProvisionCluster)
+		})
 
-	serv.API().PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
-		env := c.Params.ByName("env")
-		if ok := environments.Exists(env); !ok {
-			log.Warning("put aborted", "env", env, "envs", environments.Keys())
-			c.AbortWithStatus(404)
-			return
-		}
-		sys := c.Params.ByName("sys")
-		cluster := c.Params.ByName("cluster")
-		service := c.Params.ByName("serv")
-		_, err := GitCloneEnvironment(env, environments)
-		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster, "service", service)
-		}
+		serv.API().PUT("/config/:env/:sys/:cluster/:serv", func(c *gin.Context) {
+			env := c.Params.ByName("env")
+			if ok := environments.Exists(env); !ok {
+				log.Warning("put aborted", "env", env, "envs", environments.Keys())
+				c.AbortWithStatus(404)
+				return
+			}
+			sys := c.Params.ByName("sys")
+			cluster := c.Params.ByName("cluster")
+			service := c.Params.ByName("serv")
+			_, err := GitCloneEnvironment(env, environments)
+			if err != nil {
+				log.WithError(err).Fatal("while cloning git repo during service execution", "env", env, "system", sys, "cluster", cluster, "service", service)
+			}
 
-		ExecuteServ(env, sys, cluster, service)
-	})
+			ExecuteServ(env, sys, cluster, service)
+		})
+	*/
 
 	keyStream, err := ondisk.Init("pubKeys", ctx)
 	if err != nil {
@@ -359,7 +360,7 @@ func main() {
 		})
 
 		auth.PUT("/env/:name", func(c *gin.Context) {
-			var env properties.BootstrapVars
+			var env environment
 			err := c.MustBindWith(&env, binding.JSON)
 			if err != nil {
 				log.WithError(err).Debug("while binding json body from key put")
@@ -519,7 +520,7 @@ func main() {
 
 var hostActions = syncExt.NewMap[chan message.Action]()
 
-func GitAuth(gitConf properties.BootstrapVars) *gitHttp.BasicAuth {
+func GitAuth(gitConf environment) *gitHttp.BasicAuth {
 	return &gitHttp.BasicAuth{ //This is so stupid, but what GitHub wants
 		Username: "nerthus",
 		Password: gitConf.GitToken,
@@ -528,7 +529,7 @@ func GitAuth(gitConf properties.BootstrapVars) *gitHttp.BasicAuth {
 
 //var ErrEnvNotFound = errors.New("environment not found")
 
-func GitCloneEnvironment(env string, environments eventmap.EventMap[properties.BootstrapVars]) (r *git.Repository, err error) {
+func GitCloneEnvironment(env string, environments eventmap.EventMap[environment]) (r *git.Repository, err error) {
 	// Clones the repository into the given dir, just as a normal git clone does
 	gitConf, err := environments.Get(env)
 	if err != nil {
@@ -561,6 +562,7 @@ func GitCloneEnvironment(env string, environments eventmap.EventMap[properties.B
 	return
 }
 
+/*
 func GitBootstrap(r *git.Repository, env string, gitConf properties.BootstrapVars) {
 	w, err := r.Worktree()
 	if err != nil {
@@ -621,6 +623,7 @@ func GitBootstrap(r *git.Repository, env string, gitConf properties.BootstrapVar
 		log.WithError(err).Fatal("while pushing")
 	}
 }
+*/
 
 func keys[T any](m map[string]T) (keys []string) {
 	keys = make([]string, len(m))
