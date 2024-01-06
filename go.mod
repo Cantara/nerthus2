@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.66.2
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.36.1
 	github.com/aws/smithy-go v1.19.0
-	github.com/cantara/bragi v0.7.4
+	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.7
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.11.0

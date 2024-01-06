@@ -73,8 +73,8 @@ github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7N
 github.com/bytedance/sonic v1.5.0/go.mod h1:ED5hyg4y6t3/9Ku1R6dU/4KyJ48DZ4jPhfY1O2AihPM=
 github.com/bytedance/sonic v1.9.1 h1:6iJ6NqdoxCDr6mbY8h18oSO+cShGSMRGCEo7F2h0x8s=
 github.com/bytedance/sonic v1.9.1/go.mod h1:i736AoUSYt75HyZLoJW9ERYxcy6eaN6h4BZXU064P/U=
-github.com/cantara/bragi v0.7.4 h1:cxQ3JOb/iX7RB58vWoWvBs+KCcWwVD41SPpNYL5MPws=
-github.com/cantara/bragi v0.7.4/go.mod h1:btpJS4I5xGUohgnno50o8XD1qysPjozSrUzDjWr2W6Q=
+github.com/cantara/bragi v0.8.0 h1:0O3WyvJi7TrSIG49PXK6DoJwtQa+hrAPSfDSb5xPW+I=
+github.com/cantara/bragi v0.8.0/go.mod h1:btpJS4I5xGUohgnno50o8XD1qysPjozSrUzDjWr2W6Q=
 github.com/cantara/gober v0.18.7 h1:gAk8V9ZuclqbxHVEE/4DJ25M3JxcqaIlIEAKWu5i8J4=
 github.com/cantara/gober v0.18.7/go.mod h1:/C8T3QqyTWH7GDkU3SxiZHC1U/twzexQMElNiw+vA7Y=
 github.com/chenzhuoyu/base64x v0.0.0-20211019084208-fb5309c8db06/go.mod h1:DH46F32mSOjUmXrMHnKwZdA8wcEefY7UVqBKYGjpdQY=
