@@ -66,7 +66,7 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 		Use fingerprints structs for adapters to define names and return values. This can then be imported and used for requirements and srict json matching
 	*/
 	s, err := story.Start("deploy").
-		LinkTo("vpc", "key", "image", "cert", "node", "lbsg", "tg", "lb", "sg").
+		LinkTo("vpc", "key", "image", "cert", "node", "rule", "lbsg", "tg", "lb", "sg").
 		Id("vpc").Adapter(vpcA.Name()).LinkTo("lbsg", "sn", "ig", "tg", "sg").
 		Id("key").Adapter(keyA.Name()).LinkTo("node").
 		Id("image").Adapter(imgA.Name()).LinkTo("node").
