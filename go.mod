@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.26.7
 	github.com/aws/aws-sdk-go-v2/service/iam v1.28.7
 	github.com/aws/aws-sdk-go-v2/service/rds v1.66.2
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.36.1
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.37.0
 	github.com/aws/smithy-go v1.19.0
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.7
