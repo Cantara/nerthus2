@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	iofs "io/fs"
 	"path/filepath"
 	"strconv"
@@ -17,10 +18,16 @@ func FindFilesAndSystems(dir string) (files, systems []string, err error) {
 		if path == dir {
 			return nil
 		}
-		sbragi.Info("walking", "path", path, "base", strings.ToLower(filepath.Base(path)))
+		path = strings.TrimPrefix(path, dir)[1:]
+		base := filepath.Base(path)
+		lowerBase := strings.ToLower(base)
+		sbragi.Info("walking", "path", path, "base", lowerBase)
 		if d.IsDir() {
+			if strings.HasPrefix(base, ".") {
 
-			switch strings.ToLower(filepath.Base(path)) {
+				return fs.SkipDir
+			}
+			switch lowerBase {
 			case "packages":
 				fallthrough
 			case "packageManagers":
@@ -28,14 +35,15 @@ func FindFilesAndSystems(dir string) (files, systems []string, err error) {
 			case "features":
 				fallthrough
 			case "services":
-				err = filepath.WalkDir(path, func(path string, d iofs.DirEntry, err error) error {
+				err = filepath.WalkDir(filepath.Join(dir, path), func(path string, d iofs.DirEntry, err error) error {
 					if d.IsDir() {
 						return nil
 					}
 					if filepath.Ext(path) != ".cue" {
 						return nil
 					}
-					sbragi.Info("walking", "path", path, "base", strings.ToLower(filepath.Base(path)), "ext", filepath.Ext(path))
+					path = strings.TrimPrefix(path, dir)[1:]
+					sbragi.Info("walking", "path", path, "base", lowerBase, "ext", filepath.Ext(path))
 					files = append(files, path)
 					return nil
 				})
@@ -48,7 +56,7 @@ func FindFilesAndSystems(dir string) (files, systems []string, err error) {
 		if filepath.Ext(path) != ".cue" {
 			return nil
 		}
-		sbragi.Info("walking", "path", path, "base", strings.ToLower(filepath.Base(path)), "ext", filepath.Ext(path))
+		sbragi.Info("walking", "path", path, "base", lowerBase, "ext", filepath.Ext(path))
 		files = append(files, path)
 		return nil
 	})
@@ -59,7 +67,7 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 	//Might not need the copy as the pointers should be different outside and inside the function
 	//systemFiles := make([]string, len(files))
 	//copy(systemFiles, files)
-	err = filepath.WalkDir(system, func(path string, d iofs.DirEntry, err error) error {
+	err = filepath.WalkDir(filepath.Join(root, system), func(path string, d iofs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
@@ -67,6 +75,7 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 			return nil
 		}
 		sbragi.Info("walking", "path", path, "base", strings.ToLower(filepath.Base(path)), "ext", filepath.Ext(path))
+		path = strings.TrimPrefix(path, root)[1:]
 		files = append(files, path)
 		return nil
 	})
@@ -75,13 +84,20 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 	}
 	//TODO: get all subdirs with the exception of the files dir
 	var tmp schema.Root
+	sbragi.Info("loading", "root", root, "files", files)
 	if err = schema.Load(root, files, &tmp); err != nil {
 		sbragi.Info("hitt")
 		return
 	}
-	//data, _ := yaml.Marshal(cfg)
-	//sys := make([]System, len(root.Systems))
-	var sys System
+	sys := System{
+		Name:          tmp.System.Name,
+		MachineName:   tmp.System.MachineName,
+		Cidr:          tmp.System.Cidr,
+		Zone:          tmp.System.Zone,
+		Domain:        tmp.System.Domain,
+		RoutingMethod: tmp.System.RoutingMethod,
+		Clusters:      make([]Cluster, len(tmp.System.Clusters)),
+	}
 	/*
 		if root.System.Name != system {
 			//Only parse the system we have actually read the files for
@@ -89,12 +105,6 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 			return
 		}
 	*/
-	sys.Name = tmp.System.Name
-	sys.Cidr = tmp.System.Cidr
-	sys.Zone = tmp.System.Zone
-	sys.Domain = tmp.System.Domain
-	sys.RoutingMethod = tmp.System.RoutingMethod
-	sys.Clusters = make([]Cluster, len(tmp.System.Clusters))
 	for i, c := range tmp.System.Clusters {
 		pm := map[string]schema.Package{}
 		for k, v := range tmp.Packages {
@@ -121,10 +131,11 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 			}
 		}
 		sys.Clusters[i] = Cluster{
-			Name:     c.Name,
-			Packages: pm,
-			Size:     c.Size,
-			Internal: c.Internal,
+			Name:        c.Name,
+			MachineName: c.MachineName,
+			Packages:    pm,
+			Size:        c.Size,
+			Internal:    c.Internal,
 			Node: Node{
 				Os: OS{
 					Name:            c.Node.Os,
@@ -138,13 +149,6 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 		}
 		sbragi.Info("cluste", "node", sys.Clusters[i].Node)
 		for j, serv := range c.Services {
-			sys.Clusters[i].Services[j] = Service{
-				Name:        serv.Name,
-				MachineName: strings.ToLower(strings.ReplaceAll(serv.Name, " ", "_")),
-				Props:       serv.Props,
-				Port:        serv.Port,
-			}
-
 		servReq:
 			for _, name := range serv.Definition.Requirements.Services {
 				nameLow := strings.ToLower(name)
@@ -211,32 +215,41 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 					//Provides: def.Provides,
 				}
 			}
-			sys.Clusters[i].Services[j].Definition = ServiceInfo{
-				Name:        serv.Definition.Name,
-				ServiceType: serv.Definition.ServiceType,
-				HealthType:  serv.Definition.HealthType,
-				APIPath:     serv.Definition.APIPath,
-				Artifact:    Artifact(serv.Definition.Artifact),
-				Requirements: Requirements{
-					RAM:              serv.Definition.Requirements.RAM,
-					Disk:             serv.Definition.Requirements.Disk,
-					CPU:              serv.Definition.Requirements.CPU,
-					PropertiesName:   serv.Definition.Requirements.PropertiesName,
-					WebserverPortKey: serv.Definition.Requirements.WebserverPortKey,
-					NotClusterAble:   serv.Definition.Requirements.NotClusterAble,
-					IsFrontend:       serv.Definition.Requirements.IsFrontend,
-					Features:         f,
-					Packages:         p,
-					Services:         serv.Definition.Requirements.Services,
+			sys.Clusters[i].Services[j] = Service{
+				Name:        serv.Name,
+				MachineName: serv.MachineName,
+				//MachineName: strings.ToLower(strings.ReplaceAll(serv.Name, " ", "_")),
+				Props: serv.Props,
+				Port:  serv.Port,
+				Definition: ServiceInfo{
+					Name:        serv.Definition.Name,
+					MachineName: serv.Definition.MachineName,
+					ServiceType: serv.Definition.ServiceType,
+					HealthType:  serv.Definition.HealthType,
+					APIPath:     serv.Definition.APIPath,
+					Artifact:    Artifact(serv.Definition.Artifact),
+					Requirements: Requirements{
+						RAM:              serv.Definition.Requirements.RAM,
+						Disk:             serv.Definition.Requirements.Disk,
+						CPU:              serv.Definition.Requirements.CPU,
+						PropertiesName:   serv.Definition.Requirements.PropertiesName,
+						WebserverPortKey: serv.Definition.Requirements.WebserverPortKey,
+						NotClusterAble:   serv.Definition.Requirements.NotClusterAble,
+						IsFrontend:       serv.Definition.Requirements.IsFrontend,
+						Features:         f,
+						Packages:         p,
+						Services:         serv.Definition.Requirements.Services,
+					},
 				},
 			}
 		}
 	}
 	conf = Environment{
-		Name:       tmp.Name,
-		NerthusURL: tmp.NerthusURL,
-		VisualeURL: tmp.VisualeURL,
-		System:     sys,
+		Name:        tmp.Name,
+		MachineName: tmp.MachineName,
+		NerthusURL:  tmp.NerthusURL,
+		VisualeURL:  tmp.VisualeURL,
+		System:      sys,
 	}
 	return
 }

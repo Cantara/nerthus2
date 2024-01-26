@@ -27,14 +27,14 @@ func Adapter(c *ec2.Client) adapter.Adapter {
 		servs := make([]server.Server, env.System.Cluster.Size)
 		var ids []string
 		var extra string
-		if env.Name != env.System.Name {
-			extra = fmt.Sprintf("-%s", env.System.Name)
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
 		}
-		if env.System.Name != env.System.Cluster.Name {
-			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.Name)
+		if env.System.MachineName != env.System.Cluster.MachineName {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.MachineName)
 		}
 		for i := range servs {
-			s, err := server.Create(i, fmt.Sprintf("%s%s-%d", env.Name, extra, i), env.System.Cluster.Name, env.System.Name, env.Name, env.System.Cluster.Node.Size,
+			s, err := server.Create(i, fmt.Sprintf("%s%s-%d", env.MachineName, extra, i+1), env.System.Cluster.Name, env.System.Name, env.Name, env.System.Cluster.Node.Size,
 				subnets[i%len(subnets)], env.NerthusURL, env.VisualeURL, env.System.Cluster.DiskSize(), img, k, sg, c)
 			log.WithError(err).Trace("while creating nodes", "env", env.Name, "system", env.System.Name, "cluster", env.System.Cluster.Name, "image", img.HName, "subnets", subnets, "node", i)
 			if err != nil {

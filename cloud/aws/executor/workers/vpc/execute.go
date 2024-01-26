@@ -16,7 +16,11 @@ var Fingerprint = adapter.New[vpc.VPC]("CreateOrGetVPC")
 func Adapter(c *ec2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (v vpc.VPC, err error) {
 		env := start.Fingerprint.Value(a[0])
-		name := fmt.Sprintf("%s-%s-vpc", env.Name, env.System.Name)
+		var extra string
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
+		}
+		name := fmt.Sprintf("%s%s-vpc", env.MachineName, extra)
 		v, err = vpc.NewVPC(name, env.System.Cidr, c)
 		if err != nil {
 			log.WithError(err).Error("while creating vpc")

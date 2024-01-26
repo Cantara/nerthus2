@@ -70,9 +70,10 @@ func init() {
 }
 
 type environment struct {
-	GitToken string `json:"git_token"`
-	GitRepo  string `json:"git_repo"`
-	EnvName  string `json:"name"`
+	GitToken    string `json:"git_token"`
+	GitRepo     string `json:"git_repo"`
+	EnvName     string `json:"name"`
+	lastExecute *time.Timer
 }
 
 func main() {
@@ -127,19 +128,28 @@ func main() {
 		log.WithError(err).Fatal("while initializing public key stream")
 	}
 	environments, err := eventmap.Init[environment](envStream, "environment", "v0.0.1",
-		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx)
+		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx, func(env *environment) {
+			env.lastExecute = time.AfterFunc(time.Minute*15, func() {
+				_, err := GitCloneEnvironment(*env)
+				if log.WithError(err).Error("while cloning git repo during environment execution", "env", env.EnvName) {
+					return
+				}
+				go ExecuteEnv(env.EnvName, d.Provision)
+			})
+		})
 	//TODO: If bootstrap add local users ssh key to map and add key on bootstrap
 
 	if bootstrap {
-		err = environments.Set(bootstrapEnv, environment{
+		env := environment{
 			GitToken: gitToken,
 			GitRepo:  gitRepo,
 			EnvName:  bootstrapEnv,
-		})
+		}
+		err = environments.Set(bootstrapEnv, env)
 		if err != nil {
 			log.WithError(err).Fatal("while storing bootstrap env in map", "isBootstrapping", bootstrap, "environments", environments.Len())
 		}
-		_, err := GitCloneEnvironment(bootstrapEnv, environments)
+		_, err := GitCloneEnvironment(env)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during bootstrap")
 		}
@@ -162,29 +172,37 @@ func main() {
 	}
 
 	serv.API().POST("/config/:env", func(c *gin.Context) {
-		env := c.Params.ByName("env")
-		if ok := environments.Exists(env); !ok {
+		name := c.Params.ByName("env")
+		env, err := environments.Get(name)
+		//if ok := environments.Exists(env); !ok {
+		if err != nil {
 			c.AbortWithStatus(404)
 			return
 		}
-		_, err := GitCloneEnvironment(env, environments)
+		//_, err := GitCloneEnvironment(env, environments)
+		_, err = GitCloneEnvironment(env)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		go ExecuteEnv(env, d.Provision)
+		env.lastExecute.Reset(time.Minute * 15)
+		go ExecuteEnv(env.EnvName, d.Provision)
 	})
 
 	serv.API().PUT("/config/:env", func(c *gin.Context) {
-		env := c.Params.ByName("env")
-		if ok := environments.Exists(env); !ok {
+		name := c.Params.ByName("env")
+		env, err := environments.Get(name)
+		//if ok := environments.Exists(env); !ok {
+		if err != nil {
 			c.AbortWithStatus(404)
 			return
 		}
-		_, err := GitCloneEnvironment(env, environments)
+		//_, err := GitCloneEnvironment(env, environments)
+		_, err = GitCloneEnvironment(env)
 		if err != nil {
 			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
 		}
-		go ExecuteEnv(env, d.Provision)
+		env.lastExecute.Reset(time.Minute * 15)
+		go ExecuteEnv(env.EnvName, d.Provision)
 		/*
 			t := time.NewTicker(time.Second * 30)
 			for {
@@ -515,6 +533,7 @@ func main() {
 	}()
 
 	log.Info("starting webserver", "environments", environments.Keys())
+	go p.Run()
 	serv.Run()
 }
 
@@ -529,20 +548,22 @@ func GitAuth(gitConf environment) *gitHttp.BasicAuth {
 
 //var ErrEnvNotFound = errors.New("environment not found")
 
-func GitCloneEnvironment(env string, environments eventmap.EventMap[environment]) (r *git.Repository, err error) {
+func GitCloneEnvironment(env environment) (r *git.Repository, err error) {
 	// Clones the repository into the given dir, just as a normal git clone does
-	gitConf, err := environments.Get(env)
-	if err != nil {
-		//err = ErrEnvNotFound
-		return
-	}
-	r, err = git.PlainClone("systems/"+env, false, &git.CloneOptions{
-		Auth: GitAuth(gitConf),
-		URL:  fmt.Sprintf("https://%s.git", gitConf.GitRepo),
+	/*
+		gitConf, err := environments.Get(env)
+		if err != nil {
+			//err = ErrEnvNotFound
+			return
+		}
+	*/
+	r, err = git.PlainClone("systems/"+env.EnvName, false, &git.CloneOptions{
+		Auth: GitAuth(env),
+		URL:  fmt.Sprintf("https://%s.git", env.GitRepo),
 	})
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
-			r, err = git.PlainOpen("systems/" + env)
+			r, err = git.PlainOpen("systems/" + env.EnvName)
 			if err != nil {
 				return
 			}
@@ -551,7 +572,7 @@ func GitCloneEnvironment(env string, environments eventmap.EventMap[environment]
 			if err != nil {
 				return
 			}
-			err = w.Pull(&git.PullOptions{Auth: GitAuth(gitConf)})
+			err = w.Pull(&git.PullOptions{Auth: GitAuth(env)})
 			if errors.Is(err, git.NoErrAlreadyUpToDate) {
 				err = nil
 			}

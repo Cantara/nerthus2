@@ -20,18 +20,35 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		env := start.Fingerprint.Value(a[0])
 		v := vpce.Fingerprint.Value(a[1])
 		log.Info("creating target groups", "a", a, "i", env, "v", v)
-		tgs = make([]loadbalancer.TargetGroup, len(env.System.Cluster.Services))
-		for i, service := range env.System.Cluster.Services {
-			name := fmt.Sprintf("%s-%s-%s-%s-tg", env.Name, env.System.Name, env.System.Cluster.Name, service.MachineName) //This will be to long
-			path := fmt.Sprintf("/%s/health", strings.Trim(service.Definition.APIPath, "/"))
-			tgs[i], err = loadbalancer.GetTargetGroup(name, path, service.Port, c)
-			if err == nil {
+		//tgs = make([]loadbalancer.TargetGroup, len(env.System.Cluster.Services))
+		var extra string
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
+		}
+		if env.System.MachineName != env.System.Cluster.MachineName {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.MachineName)
+		}
+		for _, service := range env.System.Cluster.Services {
+			if service.Port == 0 {
 				continue
 			}
-			tgs[i], err = loadbalancer.CreateTargetGroup(v.Id, name, path, service.Port, c)
+			extra := extra
+			if env.System.Cluster.MachineName != service.MachineName {
+				extra = fmt.Sprintf("%s-%s", extra, service.MachineName)
+			}
+			name := fmt.Sprintf("%s%s-tg", env.MachineName, extra)
+			path := strings.ReplaceAll(fmt.Sprintf("/%s/health", strings.Trim(service.Definition.APIPath, "/")), "//", "/")
+			var tg loadbalancer.TargetGroup
+			tg, err = loadbalancer.GetTargetGroup(name, path, service.Port, c)
+			if err == nil {
+				tgs = append(tgs, tg)
+				continue
+			}
+			tg, err = loadbalancer.CreateTargetGroup(v.Id, name, path, service.Port, c)
 			if log.WithError(err).Trace("creating new target group", "name", name, "vpc", v.Id) {
 				return
 			}
+			tgs = append(tgs, tg)
 		}
 		return
 

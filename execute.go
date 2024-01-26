@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/cantara/bragi/sbragi"
@@ -9,15 +10,25 @@ import (
 
 type Provision func(conf config.Environment)
 
+func init() {
+	var err error
+	wd, err = os.Getwd()
+	sbragi.WithError(err).Fatal("while getting working dir")
+	systemDir = filepath.Join(wd, "systems")
+}
+
+var wd string
+var systemDir string
+
 func ExecuteEnv(env string, prov Provision) (id string, err error) {
-	envDir := filepath.Join("systems", env)
+	envDir := filepath.Join(systemDir, env)
 	files, systems, err := config.FindFilesAndSystems(envDir)
 	if sbragi.WithError(err).Trace("getting files and systems", "env", env) {
 		return "", err
 	}
 	for _, system := range systems {
 		conf, err := config.ParseSystem(files, system, envDir)
-		if sbragi.WithError(err).Trace("parsing system", "env", env, "system", system) {
+		if sbragi.WithError(err).Trace("parsing system", "env", env, "dir", envDir, "system", system, "files", files) {
 			return "", err
 		}
 		prov(conf)

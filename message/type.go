@@ -16,5 +16,6 @@ type Response struct {
 const (
 	RoleUpdate     = "RoleUpdate"
 	Playbook       = "Playbook"
+	Config         = "Config"
 	AuthorizedKeys = "AuthorizedKeys"
 )

@@ -2,14 +2,17 @@ package config
 
 import "list"
 
+import "strings"
+
 #NodeSizes: "(nano|micro|small|medium|large|xlarge|xxlarge)"
 
 //_#clusterBase: {
 #Cluster: {
-	name: string
-	iam?: string
-	node: #ArmNode | #x86Node
-	size: int > 0 | *3
+	name:         string
+	machine_name: strings.Replace(name, " ", "-", -1)
+	iam?:         string
+	node:         #ArmNode | #x86Node
+	size:         >0 & int | *3
 	services: [...#Service] & list.MinItems(1)
 	expose?: {[string]: int}
 	playbook?: string

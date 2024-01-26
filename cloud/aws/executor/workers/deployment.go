@@ -12,7 +12,7 @@ import (
 	"github.com/cantara/gober/consensus"
 	"github.com/cantara/gober/stream"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/cert"
-	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/reader"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/repeatable"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/story"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/image"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/key"
@@ -36,13 +36,14 @@ var json = jsoniter.ConfigDefault
 
 type Provisioner interface {
 	Provision(env config.Environment)
+	Status() map[string]map[string]repeatable.State
 	//ProvisionSystem(sys system.System, env, nerthus, visuale string)
 	//ProvisionCluster(clust system.Cluster, sys system.System, env, nerthus, visuale string)
 	Work()
 }
 
 type provisioner struct {
-	r reader.Reader
+	r repeatable.Reader
 }
 
 func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, ac *acm.Client, ctx context.Context) (Provisioner, error) {
@@ -84,7 +85,7 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 	if err != nil {
 		return nil, err
 	}
-	r, err := reader.New[start.Environment](strm, cb, stream.StaticProvider(sbragi.RedactedString(cryptoKey)), time.Minute*5, s, ctx, start.Adapter, vpcA, keyA, imgA, certA, lbsgA, snA, igA, tgA, sgA, nodeA, lbA, lsA, rA, tA)
+	r, err := repeatable.New[start.Environment](strm, cb, stream.StaticProvider(sbragi.RedactedString(cryptoKey)), time.Minute*5, s, ctx, start.Adapter, vpcA, keyA, imgA, certA, lbsgA, snA, igA, tgA, sgA, nodeA, lbA, lsA, rA, tA)
 	if err != nil {
 		return nil, err
 	}
@@ -98,14 +99,20 @@ func (d provisioner) Work() {
 	d.r.Read()
 }
 
+func (d provisioner) Status() map[string]map[string]repeatable.State {
+	return d.r.State()
+}
+
 func (d provisioner) Provision(env config.Environment) {
 	for _, cluster := range env.System.Clusters {
 		p := start.Environment{
-			Name:       env.Name,
-			NerthusURL: env.NerthusURL,
-			VisualeURL: env.VisualeURL,
+			Name:        env.Name,
+			MachineName: env.MachineName,
+			NerthusURL:  env.NerthusURL,
+			VisualeURL:  env.VisualeURL,
 			System: start.System{
 				Name:          env.System.Name,
+				MachineName:   env.System.MachineName,
 				Domain:        env.System.Domain,
 				RoutingMethod: env.System.RoutingMethod,
 				Cidr:          env.System.Cidr,
@@ -115,7 +122,7 @@ func (d provisioner) Provision(env config.Environment) {
 		}
 		b, err := json.Marshal(p)
 		sbragi.WithError(err).Fatal("json should not fail")
-		d.r.New(b)
+		d.r.New(env.Name, b)
 		sbragi.Info("new", "b", string(b))
 	}
 	/*

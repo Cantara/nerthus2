@@ -1,11 +1,14 @@
 package config
 
+import "strings"
+
 #Service: {
-	name:    string
-	git?:    string
-	branch?: string
-	port?:   int
-	props?:  string
+	name:         string
+	machine_name: strings.Replace(name, " ", "-", -1)
+	git?:         string
+	branch?:      string
+	port?:        int
+	props?:       string
 	dirs?: {[string]: string}
 	files?: {[string]: string}
 	definition: #ServiceDefinition
@@ -13,6 +16,7 @@ package config
 
 #ServiceDefinition: {
 	name:         string
+	machine_name: strings.Replace(name, " ", "-", -1)
 	service_type: string
 	health_type:  string
 	api_path?:    string

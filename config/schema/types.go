@@ -14,6 +14,7 @@ type Root struct {
 	PackageManagers map[string]PackageManager `json:"packageManagers,omitempty"`
 	Packages        map[string]Package        `json:"packages,omitempty"`
 	Name            string                    `json:"name"`
+	MachineName     string                    `json:"machine_name"`
 	NerthusURL      string                    `json:"nerthus_url"`
 	VisualeURL      string                    `json:"visuale_url"`
 	System          System                    `json:"system"`
@@ -36,6 +37,7 @@ type Requirements struct {
 }
 type ServiceInfo struct {
 	Name         string       `json:"name"`
+	MachineName  string       `json:"machine_name"`
 	ServiceType  string       `json:"service_type"`
 	HealthType   string       `json:"health_type"`
 	APIPath      string       `json:"api_path"`
@@ -50,11 +52,12 @@ type Service struct {
 	Definition  ServiceInfo `json:"definition"`
 }
 type Cluster struct {
-	Name     string    `json:"name"`
-	Node     Node      `json:"node"`
-	Size     int       `json:"size"`
-	Services []Service `json:"services"`
-	Internal bool      `json:"internal"`
+	Name        string    `json:"name"`
+	MachineName string    `json:"machine_name"`
+	Node        Node      `json:"node"`
+	Size        int       `json:"size"`
+	Services    []Service `json:"services"`
+	Internal    bool      `json:"internal"`
 }
 type Node struct {
 	Os   string `json:"os"`
@@ -70,6 +73,7 @@ const (
 
 type System struct {
 	Name          string        `json:"name"`
+	MachineName   string        `json:"machine_name"`
 	Domain        string        `json:"domain"`
 	RoutingMethod RoutingMethod `json:"routing_method"`
 	Cidr          string        `json:"cidr"`

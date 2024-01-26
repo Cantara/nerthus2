@@ -21,10 +21,10 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		subnets := sn.Fingerprint.Value(a[1])
 		sg := lbsg.Fingerprint.Value(a[2])
 		var extra string
-		if env.Name != env.System.Name {
-			extra = fmt.Sprintf("-%s", env.System.Name)
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
 		}
-		name := fmt.Sprintf("%s%s-lb", env.Name, extra)
+		name := fmt.Sprintf("%s%s-lb", env.MachineName, extra)
 		lb, err = loadbalancer.CreateLoadbalancer(name, sg.Id, subnets, c)
 		log.WithError(err).Trace("creating loadbalancer", "name", name, "subnets", subnets)
 		return lb, err

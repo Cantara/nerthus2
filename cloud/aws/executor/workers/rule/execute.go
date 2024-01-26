@@ -23,13 +23,13 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		tgs := tg.Fingerprint.Value(a[2])
 		//For now do not split the cluster executions
 		var extra string
-		if env.Name != env.System.Name {
-			extra = fmt.Sprintf("-%s", env.System.Name)
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
 		}
-		if env.System.Name != env.System.Cluster.Name {
-			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.Name)
+		if env.System.MachineName != env.System.Cluster.MachineName {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.MachineName)
 		}
-		dnsName := fmt.Sprintf("%s%s.%s", env.Name, extra, env.System.Domain)
+		dnsName := fmt.Sprintf("%s%s.%s", env.MachineName, extra, env.System.Domain)
 		for _, tg := range tgs {
 			if env.System.RoutingMethod == schema.PathRouting {
 				r, err = loadbalancer.CreateRulePath(l, tg, c)

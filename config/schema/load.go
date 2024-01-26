@@ -31,7 +31,7 @@ func LoadFS(dir string, files []string, fs iofs.FS, dest any) error {
 	sbragi.Info("loading", "dir", dir, "files", files)
 	overlay := make(map[string]load.Source)
 	err := iofs.WalkDir(fs, ".", func(path string, d iofs.DirEntry, err error) error {
-		sbragi.Info("reading fs", "path", path)
+		sbragi.Info("reading fs", "dir", dir, "path", path)
 		if d.IsDir() {
 			return nil
 		}
@@ -49,14 +49,15 @@ func LoadFS(dir string, files []string, fs iofs.FS, dest any) error {
 		if !strings.HasPrefix(path, "_schema") {
 			path = filepath.Join("_schema", path)
 		}
+		files = append(files, path)
 		path = filepath.Join(dir, path)
 		overlay[path] = load.FromBytes(bytes)
-		files = append(files, path)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+	sbragi.Info("load", "overlay", keys(overlay), "dir", dir, "files", files)
 	configInst := load.Instances(files, &load.Config{
 		Dir:     dir,
 		Package: "*",
@@ -84,4 +85,14 @@ func LoadFS(dir string, files []string, fs iofs.FS, dest any) error {
 		return fmt.Errorf("cannot decode final configuration: %v", errors.Details(err, nil))
 	}
 	return nil
+}
+
+func keys[T any](o map[string]T) []string {
+	out := make([]string, len(o))
+	i := 0
+	for k := range o {
+		out[i] = k
+		i++
+	}
+	return out
 }

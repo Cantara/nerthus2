@@ -8,10 +8,11 @@ import (
 )
 
 type Environment struct {
-	Name       string `json:"name"`
-	NerthusURL string `json:"nerthus_url"`
-	VisualeURL string `json:"visuale_url"`
-	System     System `json:"system"`
+	Name        string `json:"name"`
+	MachineName string `json:"machine_name"`
+	NerthusURL  string `json:"nerthus_url"`
+	VisualeURL  string `json:"visuale_url"`
+	System      System `json:"system"`
 	//Systems    []System `json:"systems"`
 }
 type Artifact struct {
@@ -76,6 +77,7 @@ type Package struct {
 
 type ServiceInfo struct {
 	Name         string       `json:"name"`
+	MachineName  string       `json:"machine_name"`
 	ServiceType  string       `json:"service_type"`
 	HealthType   string       `json:"health_type"`
 	APIPath      string       `json:"api_path"`
@@ -90,13 +92,14 @@ type Service struct {
 	Definition  ServiceInfo `json:"definition"`
 }
 type Cluster struct {
-	Name     string                    `json:"name"`
-	Node     Node                      `json:"node"`
-	Services []Service                 `json:"services"`
-	Size     int                       `json:"size"`
-	Internal bool                      `json:"internal"`
-	Packages map[string]schema.Package `json:"-"`
-	System   []Feature                 `json:"system,omitempty"`
+	Name        string                    `json:"name"`
+	MachineName string                    `json:"machine_name"`
+	Node        Node                      `json:"node"`
+	Services    []Service                 `json:"services"`
+	Size        int                       `json:"size"`
+	Internal    bool                      `json:"internal"`
+	Packages    map[string]schema.Package `json:"-"`
+	System      []Feature                 `json:"system,omitempty"`
 }
 
 func (c Cluster) HasFrontend() bool {
@@ -132,6 +135,7 @@ type Node struct {
 }
 type System struct {
 	Name          string               `json:"name"`
+	MachineName   string               `json:"machine_name"`
 	Domain        string               `json:"domain"`
 	RoutingMethod schema.RoutingMethod `json:"routing_method"`
 	Cidr          string               `json:"cidr"`

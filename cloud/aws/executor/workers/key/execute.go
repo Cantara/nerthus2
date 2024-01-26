@@ -16,33 +16,15 @@ var Fingerprint = adapter.New[key.Key]("NewKey")
 func Adapter(c *ec2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (k key.Key, err error) {
 		env := start.Fingerprint.Value(a[0])
-		k, err = key.New(fmt.Sprintf("%s-%s-key", env.Name, env.System.Name), c)
+		var extra string
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
+		}
+		if env.System.MachineName != env.System.Cluster.MachineName {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.MachineName)
+		}
+		k, err = key.New(fmt.Sprintf("%s%s-key", env.MachineName, extra), c)
 		log.WithError(err).Trace("creating key")
 		return
 	}, start.Fingerprint)
-}
-
-type data struct {
-	c      *ec2.Client
-	env    string
-	system string
-	name   string
-}
-
-func Executor(env, system string, c *ec2.Client) data {
-	return data{
-		c:      c,
-		env:    env,
-		system: system,
-		name:   fmt.Sprintf("%s-%s-key", env, system),
-	}
-}
-
-func (d data) Execute() (k key.Key, err error) {
-	k, err = key.New(d.name, d.c)
-	if err != nil {
-		log.WithError(err).Error("while creating key")
-		return
-	}
-	return
 }

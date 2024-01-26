@@ -18,7 +18,11 @@ func Adapter(c *ec2.Client) adapter.Adapter {
 	return Fingerprint.Adapter(func(a []adapter.Value) (sg security.Group, err error) {
 		env := start.Fingerprint.Value(a[0])
 		v := vpce.Fingerprint.Value(a[1])
-		name := fmt.Sprintf("%s-%s-lb", env.Name, env.System.Name)
+		var extra string
+		if env.MachineName != env.System.MachineName {
+			extra = fmt.Sprintf("-%s", env.System.MachineName)
+		}
+		name := fmt.Sprintf("%s%s-lb", env.MachineName, extra)
 		sg, err = security.New(env.Name, name, v.Id, c)
 		if err != nil {
 			log.WithError(err).Error("while creating new security group")
