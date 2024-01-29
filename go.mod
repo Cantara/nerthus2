@@ -1,6 +1,6 @@
 module github.com/cantara/nerthus2
 
-go 1.21.5
+go 1.21.6
 
 require (
 	cuelang.org/go v0.7.0
