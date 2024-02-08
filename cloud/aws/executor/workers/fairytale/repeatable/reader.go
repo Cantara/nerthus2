@@ -79,11 +79,11 @@ type data struct {
 }
 
 func New[T any](strm stream.Stream, consBuilder consensus.ConsBuilderFunc, ckp stream.CryptoKeyProvider, timeout time.Duration, s story.Story, ctx context.Context, adapters ...adapter.Adapter) (Reader, error) {
-	if getAdapter(story.AdapterStart, adapters) == nil {
+	if getAdapter(adapter.Start, adapters) == nil {
 		adapters = append(adapters, reader.StartAdapter)
 	}
-	sa := getAdapter(story.AdapterStart, adapters)
-	if getAdapter(story.AdapterEnd, adapters) == nil {
+	sa := getAdapter(adapter.Start, adapters)
+	if getAdapter(adapter.End, adapters) == nil {
 		adapters = append(adapters, reader.EndAdapter)
 	}
 	m := map[string]struct{}{}
@@ -284,9 +284,10 @@ func (r *rr[T]) New(dim string, b []byte) error { //, id uuid.UUID) error {
 }
 
 func (r *rr[T]) Read() {
+	var part string
 	defer func() {
 		if e := recover(); e != nil {
-			log.WithError(fmt.Errorf("%v", e)).Error("recovered story reader")
+			log.WithError(fmt.Errorf("%v", e)).Error("recovered story reader", "story", r.s.Name(), "part", part)
 			r.Read()
 		}
 	}()
@@ -299,6 +300,7 @@ func (r *rr[T]) Read() {
 		}
 		run := d.run.Get()
 		log.Trace("read", "current", run.String(), "event", e, "story", r.s.Name(), "part", e.Data.Part, "run", e.Data.Run.String())
+		part = e.Data.Part
 		if !bytes.Equal(run.Bytes(), e.Data.Run.Bytes()) {
 			e.Acc(data{}) //Accing empty event when runid is wrong, sort of a terminate
 			continue
@@ -312,12 +314,17 @@ func (r *rr[T]) Read() {
 			State: Started,
 		})
 		//Since we at this point have no way to stop execution, terminated is not relevant at the moment
+		log.Info("executing part", "story", r.s.Name(), "part", p.Id())
 		v, err := a.Execute(e.Data.Data)
-		log.WithError(err).Trace("executed part", "story", r.s.Name(), "part", p.Id())
+		log.WithError(err).Info("executed part", "story", r.s.Name(), "part", p.Id())
 		if err != nil {
 			d.storyStates.Set(p.Id(), storyPart{ //This should be handled by a event
 				State: Failed,
 			})
+			continue
+		}
+		if v.Data == nil && !adapter.IsNil(a.Type()) {
+			log.Error("non nil adapter returned nil data", "adapter", a.Name(), "story", r.s.Name(), "part", p.Id())
 			continue
 		}
 		r.dimensions.CompareAndSwap(e.Data.Dimension, d, func(stored dimension) bool { //This could be a problem, if one task fails when another is read as finished, one of the parts status could get shaddowed

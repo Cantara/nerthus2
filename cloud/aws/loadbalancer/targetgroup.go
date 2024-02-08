@@ -6,16 +6,18 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	log "github.com/cantara/bragi/sbragi"
 
 	//"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 )
 
 type TargetGroup struct {
-	Name    string `json:"name"`
-	UriPath string `json:"path"`
-	Port    int    `json:"port"`
-	ARN     string `json:"arn"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+	Port int    `json:"port"`
+	ARN  string `json:"arn"`
 }
 
 func CreateTargetGroupName(scope, name string) (string, error) {
@@ -32,26 +34,30 @@ func CreateTargetGroupName(scope, name string) (string, error) {
 	return tgName, nil
 }
 
-func GetTargetGroup(name, uriPath string, port int, elb *elbv2.Client) (tg TargetGroup, err error) {
+func GetTargetGroup(name string, elb *elbv2.Client) (tg TargetGroup, err error) {
 	result, err := elb.DescribeTargetGroups(context.TODO(), &elbv2.DescribeTargetGroupsInput{
 		Names: []string{
 			name,
 		},
 	})
-	if err != nil {
+	if log.WithError(err).Trace("getting aws target group") {
+		return tg, err
+	}
+	if len(result.TargetGroups) == 0 {
+		err = fmt.Errorf("could not find target group. name=%s", name)
 		return
 	}
-
+	atg := result.TargetGroups[0]
 	tg = TargetGroup{
-		Name:    name,
-		UriPath: uriPath,
-		Port:    port,
+		Name: name,
+		Path: aws.ToString(atg.HealthCheckPath),
+		Port: int(aws.ToInt32(atg.Port)),
+		ARN:  aws.ToString(atg.TargetGroupArn),
 	}
-	tg.ARN = aws.ToString(result.TargetGroups[0].TargetGroupArn)
 	return
 }
 
-func CreateTargetGroup(vpc, name, uriPath string, port int, elb *elbv2.Client) (TargetGroup, error) {
+func CreateTargetGroup(vpc, name, path string, port int, elb *elbv2.Client) (TargetGroup, error) {
 	result, err := elb.CreateTargetGroup(context.TODO(), &elbv2.CreateTargetGroupInput{
 		Name:                       aws.String(name),
 		Port:                       aws.Int32(int32(port)),
@@ -60,21 +66,42 @@ func CreateTargetGroup(vpc, name, uriPath string, port int, elb *elbv2.Client) (
 		TargetType:                 "instance",
 		ProtocolVersion:            aws.String("HTTP1"),
 		HealthCheckIntervalSeconds: aws.Int32(5),
-		HealthCheckPath:            aws.String(uriPath),
+		HealthCheckPath:            aws.String(path),
 		HealthCheckPort:            aws.String("traffic-port"),
 		HealthCheckProtocol:        "HTTP",
 		HealthCheckTimeoutSeconds:  aws.Int32(2),
 		HealthyThresholdCount:      aws.Int32(2),
+		UnhealthyThresholdCount:    aws.Int32(2),
+		Matcher: &types.Matcher{
+			HttpCode: aws.String("200-299"),
+		},
 	})
 	if err != nil {
 		return TargetGroup{}, err
 	}
 	return TargetGroup{
-		Name:    name,
-		UriPath: uriPath,
-		Port:    port,
-		ARN:     aws.ToString(result.TargetGroups[0].TargetGroupArn),
+		Name: name,
+		Path: path,
+		Port: port,
+		ARN:  aws.ToString(result.TargetGroups[0].TargetGroupArn),
 	}, nil
+}
+func (tg *TargetGroup) Update(elb *elbv2.Client) (err error) {
+	_, err = elb.ModifyTargetGroup(context.TODO(), &elbv2.ModifyTargetGroupInput{
+		TargetGroupArn:  aws.String(tg.ARN),
+		HealthCheckPath: aws.String(tg.Path),
+		//HealthCheckPort:            aws.String(strconv.Itoa(tg.Port)),
+		HealthCheckPort:            aws.String("traffic-port"),
+		HealthCheckIntervalSeconds: aws.Int32(5),
+		HealthCheckProtocol:        "HTTP",
+		HealthCheckTimeoutSeconds:  aws.Int32(2),
+		HealthyThresholdCount:      aws.Int32(2),
+		UnhealthyThresholdCount:    aws.Int32(1),
+		Matcher: &types.Matcher{
+			HttpCode: aws.String("200-299"),
+		},
+	})
+	return
 }
 
 func (tg *TargetGroup) Delete(elb *elbv2.Client) (err error) {

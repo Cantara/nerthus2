@@ -1,6 +1,9 @@
 package config
 
-import "github.com/cantara/nerthus2/config"
+import (
+	"github.com/cantara/nerthus2/config"
+	"github.com/cantara/nerthus2/config/schema"
+)
 
 type Environment struct {
 	Name        string `json:"name"`
@@ -10,20 +13,11 @@ type Environment struct {
 	System      System `json:"system"`
 }
 type System struct {
-	Name          string  `json:"name"`
-	MachineName   string  `json:"machine_name"`
-	Domain        string  `json:"domain"`
-	RoutingMethod string  `json:"routing_method"`
-	Cidr          string  `json:"cidr"`
-	Zone          string  `json:"zone"`
-	Cluster       Cluster `json:"cluster"`
-}
-type Cluster struct {
-	Name        string                    `json:"name"`
-	MachineName string                    `json:"machine_name"`
-	Node        config.Node               `json:"node"`
-	Services    []config.Service          `json:"services"`
-	Internal    bool                      `json:"internal"`
-	Packages    map[string]config.Package `json:"-"`
-	System      []config.Feature          `json:"system,omitempty"`
+	Name          string               `json:"name"`
+	MachineName   string               `json:"machine_name"`
+	Domain        string               `json:"domain"`
+	RoutingMethod schema.RoutingMethod `json:"routing_method"`
+	Cidr          string               `json:"cidr"`
+	Zone          string               `json:"zone"`
+	Cluster       config.Cluster       `json:"cluster"`
 }

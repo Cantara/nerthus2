@@ -4,13 +4,12 @@ import (
 	"errors"
 
 	log "github.com/cantara/bragi/sbragi"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
 )
 
 const (
-	IdStart      = "S"
-	IdEnd        = "E"
-	AdapterStart = "SagaStart"
-	AdapterEnd   = "SagaEnd"
+	IdStart = "S"
+	IdEnd   = "E"
 )
 
 type Story interface {
@@ -52,7 +51,7 @@ type node struct {
 
 func Start(name string) *OutgoingBuilder {
 	s := StoryBuilder{name: name}
-	return s.Id(IdStart).Adapter(AdapterStart)
+	return s.Id(IdStart).Adapter(adapter.Start)
 }
 
 type StoryBuilder struct {
@@ -77,7 +76,7 @@ func (b *StoryBuilder) Id(id string) *AdapterBuilder {
 }
 
 func (b *StoryBuilder) End() (s Story, err error) {
-	b.Id(IdEnd).Adapter(AdapterEnd)
+	b.Id(IdEnd).Adapter(adapter.End)
 	b.buildInnLinks()
 	err = b.sortGraph()
 	if err != nil {

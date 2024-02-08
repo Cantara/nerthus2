@@ -24,6 +24,9 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		if env.MachineName != env.System.MachineName {
 			extra = fmt.Sprintf("-%s", env.System.MachineName)
 		}
+		if env.System.MachineName != env.System.Cluster.MachineName {
+			extra = fmt.Sprintf("%s-%s", extra, env.System.Cluster.MachineName)
+		}
 		name := fmt.Sprintf("%s%s-lb", env.MachineName, extra)
 		lb, err = loadbalancer.CreateLoadbalancer(name, sg.Id, subnets, c)
 		log.WithError(err).Trace("creating loadbalancer", "name", name, "subnets", subnets)

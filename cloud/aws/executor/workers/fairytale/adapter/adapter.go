@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"errors"
+	"fmt"
 
 	log "github.com/cantara/bragi/sbragi"
 	"github.com/cantara/gober/sync"
@@ -10,6 +11,19 @@ import (
 )
 
 var json = jsoniter.ConfigDefault
+
+const (
+	Start = "Start"
+	End   = "End"
+)
+
+type NilType struct{}
+
+//const NilName = "struct {}" // = Name(*new(NilType))
+
+func IsNil(t string) bool {
+	return t == "struct {}" || t == "adapter.NilType"
+}
 
 type fingerprint[T any] struct {
 	name string
@@ -43,7 +57,7 @@ type FingerprintBase[T any] interface {
 
 type Data struct {
 	Type string `json:"type"`
-	Data []byte `json:"data"`
+	Data []byte `json:"data,omitempty"`
 }
 
 type Adapter interface {
@@ -90,6 +104,7 @@ func (af fingerprint[T]) Type() string {
 
 func New[T any](name string) FingerprintBase[T] {
 	var t T
+	log.Info("check adapter creation", "t", t, "name", name, "Name(t)", Name(t), "new", Name(*new(T)), "fmt", fmt.Sprintf("%T", *new(T)))
 	return fingerprint[T]{
 		name: name,
 		ot:   Name(t),
@@ -117,7 +132,7 @@ func (a *adapter[T]) Execute(ds []Data) (o Data, err error) {
 	//ts := []any{inn{}} //a.ts
 	ts := make([]Value, len(a.reqs))
 	//if len(b) > 0 {
-	used := make([]bool, len(ts))
+	used := make([]bool, len(ds))
 types:
 	for j, req := range a.reqs {
 		//t := reflect.Indirect(reflect2.TypeOf(ts[j]).New())
@@ -127,20 +142,30 @@ types:
 			if used[i] {
 				continue
 			}
-			if req.Type() == "" { //FIXME: Kimoi
-				var v map[string]any
-				err = json.Unmarshal(d.Data, &v)
-				log.WithError(err).Trace("unmarshaling", "t", v, "b", string(d.Data), "it", Name(v), "ot", a.ot)
-				if err != nil {
-					continue
+			/*
+				Do not believe this is needed.
+				if req.Type() == "" { //FIXME: This should be ignorable.
+					var v map[string]any
+					err = json.Unmarshal(d.Data, &v)
+					if log.WithoutEscalation().WithError(err).Trace("unmarshaling", "t", v, "b", string(d.Data), "it", Name(v), "ot", a.ot) {
+						continue
+					}
+					used[i] = true
+					ts[j] = v
+					continue types
 				}
-				used[i] = true
-				ts[j] = v
-				continue types
+			*/
+			if req.Type() == "" {
+				log.Warning("type was empty, not expected", "type", d.Type, "req", req.Type())
+				continue
 			}
 			log.Info("data", "type", d.Type, "req", req.Type())
 			if d.Type != req.Type() {
 				continue
+			}
+			if IsNil(d.Type) { //d.Type == NilName {
+				used[i] = true
+				continue types
 			}
 			t := req.New()
 			err = json.Unmarshal(d.Data, t)
@@ -155,19 +180,29 @@ types:
 		err = errors.New("not all parameters were provided")
 		return
 	}
-	for _, ok := range used {
-		if !ok {
-			err = errors.New("not all data wes used")
-			return
+	if a.name != End {
+		for i, ok := range used {
+			if !ok {
+				log.Info("data1", "type", a.Type(), "nil?", IsNil(a.Type()))
+				log.Info("data2", "type", ds[i].Type, "nil?", IsNil(ds[i].Type))
+			}
+			if !ok && !IsNil(ds[i].Type) {
+				err = fmt.Errorf("not all data was used data=%s type=%s ds=%d ts=%d", string(ds[i].Data), ds[i].Type, len(ds), len(ts))
+				return
+			}
 		}
 	}
 	v, err := a.f(ts)
 	if err != nil {
 		return
 	}
-	b, err := json.Marshal(v)
-	if err != nil {
-		return
+	log.Info("adapter check", "name", Name(v), "type", a.Type(), "isNil", IsNil(a.Type()))
+	var b []byte
+	if !IsNil(a.Type()) {
+		b, err = json.Marshal(v)
+		if err != nil {
+			return
+		}
 	}
 	return Data{
 		Type: a.Type(),

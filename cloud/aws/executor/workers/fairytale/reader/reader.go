@@ -20,11 +20,11 @@ import (
 )
 
 // var StartInputFingerprint = adapter.New[struct{}](story.AdapterStart)
-var StartAdapterFingerprint = adapter.New[struct{}](story.AdapterStart)
+var StartAdapterFingerprint = adapter.New[adapter.NilType](adapter.Start)
 
-var StartAdapter = StartAdapterFingerprint.Adapter(func(n []adapter.Value) (struct{}, error) {
+var StartAdapter = StartAdapterFingerprint.Adapter(func(n []adapter.Value) (adapter.NilType, error) {
 	log.Info("start", "n", n)
-	return struct{}{}, nil
+	return adapter.NilType{}, nil
 })
 
 func RepeatFingerprintAndAdapter[T any](name string) (adapter.FingerprintBase[T], adapter.Adapter) {
@@ -35,26 +35,8 @@ func RepeatFingerprintAndAdapter[T any](name string) (adapter.FingerprintBase[T]
 	}, f)
 }
 
-/*
-func startFunc[T any](b interface{ Value(adapter.Value) (t T) }) func(n []adapter.Value) (T, error) {
-	var t T
-	switch interface{}(t).(type) {
-	case types.Nil:
-		return func(n []adapter.Value) (t T, err error) {
-			log.Info("start", "n", n)
-			return
-		}
-	default:
-		return func(n []adapter.Value) (T, error) {
-			log.Info("start", "n", n)
-			return b.Value(n[0]), nil
-		}
-	}
-}
-*/
-
 var anyAdapterFingerprint = adapter.New[any]("any")
-var EndAdapter = adapter.New[[]adapter.Value](story.AdapterEnd).Adapter(func(n []adapter.Value) ([]adapter.Value, error) { return n, nil }, anyAdapterFingerprint)
+var EndAdapter = adapter.New[[]adapter.Value](adapter.End).Adapter(func(n []adapter.Value) ([]adapter.Value, error) { return n, nil }, anyAdapterFingerprint)
 
 type Reader interface {
 	New([]byte) error
@@ -71,20 +53,20 @@ type reader[T any] struct {
 }
 
 type data struct {
-	Story  string
-	ReadID uuid.UUID
-	Part   string
-	Data   []adapter.Data
+	Story  string         `json:"story"`
+	ReadID uuid.UUID      `json:"read_id"`
+	Part   string         `json:"part"`
+	Data   []adapter.Data `json:"data,omitempty"`
 }
 
 func New[T any](strm stream.Stream, consBuilder consensus.ConsBuilderFunc, ckp stream.CryptoKeyProvider, timeout time.Duration, s story.Story, ctx context.Context, adapters ...adapter.Adapter) (Reader, error) {
 	//StartFingerprint := adapter.New[T](story.AdapterStart)
 	//StartAdapter := StartFingerprint.Adapter(startFunc[T](StartFingerprint))
-	if getAdapter(story.AdapterStart, adapters) == nil {
+	if getAdapter(adapter.Start, adapters) == nil {
 		adapters = append(adapters, StartAdapter)
 	}
-	sa := getAdapter(story.AdapterStart, adapters)
-	if getAdapter(story.AdapterEnd, adapters) == nil {
+	sa := getAdapter(adapter.Start, adapters)
+	if getAdapter(adapter.End, adapters) == nil {
 		adapters = append(adapters, EndAdapter)
 	}
 	m := map[string]struct{}{}
@@ -276,6 +258,17 @@ func (r *reader[T]) Read() {
 				}
 			}
 		*/
+		/*
+			This check should be done in a test not at runtime.
+			if a.Type() != d.Type {
+				err = fmt.Errorf("missmatch in adapter type and returned type, adapter=%s story=%s part=%s", a.Name(), r.s.Name(), p.Id())
+				return
+			}
+		*/
+		if d.Data == nil && !adapter.IsNil(a.Type()) {
+			log.Error("non nil adapter returned nil data", "adapter", a.Name(), "story", r.s.Name(), "part", p.Id())
+			continue
+		}
 		e.Acc(data{
 			Story:  e.Data.Story,
 			Part:   e.Data.Part,

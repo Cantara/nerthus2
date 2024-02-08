@@ -136,7 +136,7 @@ type OS struct {
 type Arch string
 
 const (
-	Arm64  Arch = "Arm64"
+	Arm64  Arch = "arm64"
 	X86_64 Arch = "x86_64"
 )
 

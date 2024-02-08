@@ -276,44 +276,118 @@ func (g Group) AddLoadbalancerAuthorization(loadbalancerId string, port int, e2 
 }
 
 func (g Group) AddLoadbalancerPublicAccess(e2 *ec2.Client) (err error) {
-	input := &ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId: aws.String(g.Id),
-		IpPermissions: []ec2types.IpPermission{
+	rules, err := e2.DescribeSecurityGroupRules(context.Background(), &ec2.DescribeSecurityGroupRulesInput{
+		Filters: []ec2types.Filter{
 			{
-				FromPort:   aws.Int32(80),
-				IpProtocol: aws.String("tcp"),
-				ToPort:     aws.Int32(80),
-				IpRanges: []ec2types.IpRange{
-					{
-						Description: aws.String("HTTP access to loadbalancer from anywhere"),
-						CidrIp:      aws.String("0.0.0.0/0"),
-					},
-				},
-				Ipv6Ranges: []ec2types.Ipv6Range{
-					{
-						Description: aws.String("HTTP access to loadbalancer from anywhere"),
-						CidrIpv6:    aws.String("::/0"),
-					},
-				},
-			},
-			{
-				FromPort:   aws.Int32(443),
-				IpProtocol: aws.String("tcp"),
-				ToPort:     aws.Int32(443),
-				IpRanges: []ec2types.IpRange{
-					{
-						Description: aws.String("HTTP access to loadbalancer from anywhere"),
-						CidrIp:      aws.String("0.0.0.0/0"),
-					},
-				},
-				Ipv6Ranges: []ec2types.Ipv6Range{
-					{
-						Description: aws.String("HTTP access to loadbalancer from anywhere"),
-						CidrIpv6:    aws.String("::/0"),
-					},
-				},
+				Name:   aws.String("group-id"),
+				Values: []string{g.Id},
 			},
 		},
+	})
+	if err != nil {
+		err = fmt.Errorf("Could not get service loadbalancer authorization rules for security group %s %s. err: %v", g.Id, g.Name, err)
+		return
+	}
+	V4HTTP := true
+	V4HTTPS := true
+	V6HTTP := true
+	V6HTTPS := true
+	for _, rule := range rules.SecurityGroupRules {
+		if aws.ToBool(rule.IsEgress) {
+			log.Trace("ignoring egress rules for now")
+			continue
+		}
+		if aws.ToString(rule.IpProtocol) != "tcp" {
+			err = fmt.Errorf("protocol was not tcp: %s", aws.ToString(rule.IpProtocol))
+			return
+			/*
+				log.Trace("unknown / unrelated protocol", "group", g.Id, "rule", rule.SecurityGroupRuleId)
+				continue
+			*/
+		}
+		if rule.FromPort == nil || rule.ToPort == nil {
+			err = fmt.Errorf("malconfigured tcp rule. Either from or to port was nil")
+			return
+		}
+		if *rule.FromPort != *rule.ToPort {
+			err = fmt.Errorf("to port was not same as from port, %d!=%d", *rule.ToPort, *rule.FromPort)
+			return
+		}
+		switch aws.ToInt32(rule.FromPort) {
+		case 80:
+			if aws.ToString(rule.CidrIpv4) == "0.0.0.0/0" {
+				V4HTTP = false
+			}
+			if aws.ToString(rule.CidrIpv6) == "::/0" {
+				V6HTTP = false
+			}
+		case 443:
+			if aws.ToString(rule.CidrIpv4) == "0.0.0.0/0" {
+				V4HTTPS = false
+			}
+			if aws.ToString(rule.CidrIpv6) == "::/0" {
+				V6HTTPS = false
+			}
+		default:
+			err = fmt.Errorf("unsuported / unexpected port: %d", aws.ToInt32(rule.FromPort))
+			return
+		}
+	}
+	input := &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: aws.String(g.Id),
+	}
+	if V4HTTP || V6HTTP {
+		ipPerm := ec2types.IpPermission{
+			FromPort:   aws.Int32(80),
+			IpProtocol: aws.String("tcp"),
+			ToPort:     aws.Int32(80),
+		}
+		if V4HTTP {
+			ipPerm.IpRanges = []ec2types.IpRange{
+				{
+					Description: aws.String("HTTP access to loadbalancer from anywhere"),
+					CidrIp:      aws.String("0.0.0.0/0"),
+				},
+			}
+		}
+		if V6HTTP {
+			ipPerm.Ipv6Ranges = []ec2types.Ipv6Range{
+				{
+					Description: aws.String("HTTP access to loadbalancer from anywhere"),
+					CidrIpv6:    aws.String("::/0"),
+				},
+			}
+		}
+		input.IpPermissions = append(input.IpPermissions, ipPerm)
+	}
+	if V4HTTPS || V6HTTPS {
+		ipPerm := ec2types.IpPermission{
+			FromPort:   aws.Int32(443),
+			IpProtocol: aws.String("tcp"),
+			ToPort:     aws.Int32(443),
+		}
+		if V4HTTPS {
+			ipPerm.IpRanges = []ec2types.IpRange{
+				{
+					Description: aws.String("HTTPS access to loadbalancer from anywhere"),
+					CidrIp:      aws.String("0.0.0.0/0"),
+				},
+			}
+		}
+		if V6HTTPS {
+			ipPerm.Ipv6Ranges = []ec2types.Ipv6Range{
+				{
+					Description: aws.String("HTTPS access to loadbalancer from anywhere"),
+					CidrIpv6:    aws.String("::/0"),
+				},
+			}
+		}
+		input.IpPermissions = append(input.IpPermissions, ipPerm)
+	}
+
+	if len(input.IpPermissions) == 0 {
+		log.Trace("no permissions to set")
+		return
 	}
 
 	_, err = e2.AuthorizeSecurityGroupIngress(context.Background(), input)

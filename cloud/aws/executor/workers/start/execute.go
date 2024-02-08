@@ -2,9 +2,7 @@ package start
 
 import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/adapter"
-	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/story"
-	"github.com/cantara/nerthus2/config"
-	"github.com/cantara/nerthus2/config/schema"
+	"github.com/cantara/nerthus2/probe/config"
 )
 
 /*
@@ -29,6 +27,7 @@ type Start struct {
 }
 */
 
+/*
 type Environment struct {
 	Name        string `json:"name"`
 	MachineName string `json:"machine_name"`
@@ -46,8 +45,9 @@ type System struct {
 	Zone          string               `json:"zone"`
 	Cluster       config.Cluster       `json:"cluster"`
 }
+*/
 
-var Fingerprint = adapter.New[Environment](story.AdapterStart)
-var Adapter = Fingerprint.Adapter(func(a []adapter.Value) (s Environment, err error) {
+var Fingerprint = adapter.New[config.Environment](adapter.Start)
+var Adapter = Fingerprint.Adapter(func(a []adapter.Value) (s config.Environment, err error) {
 	return Fingerprint.Value(a[0]), nil
 }, Fingerprint)

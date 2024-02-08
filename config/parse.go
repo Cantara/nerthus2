@@ -106,9 +106,12 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 		}
 	*/
 	for i, c := range tmp.System.Clusters {
-		pm := map[string]schema.Package{}
+		p := map[string]Package{}
 		for k, v := range tmp.Packages {
-			pm[k] = v
+			p[k] = Package{
+				Name:     k,
+				Managers: v.Managers,
+			}
 		}
 		os, ok := tmp.OS[c.Node.Os]
 		if !ok {
@@ -133,7 +136,7 @@ func ParseSystem(files []string, system, root string) (conf Environment, err err
 		sys.Clusters[i] = Cluster{
 			Name:        c.Name,
 			MachineName: c.MachineName,
-			Packages:    pm,
+			Packages:    p,
 			Size:        c.Size,
 			Internal:    c.Internal,
 			Node: Node{
@@ -523,7 +526,10 @@ func featureToFeature(features []string, cfg schema.Root, cluster *Cluster, serv
 			Tasks:    tasks,
 		})
 		for k, v := range feat.Packages {
-			cluster.Packages[k] = v
+			cluster.Packages[k] = Package{
+				Name:     k,
+				Managers: v.Managers,
+			}
 		}
 	}
 	return serviceFeats

@@ -107,7 +107,7 @@ func TestNew(t *testing.T) {
 		t.Fatal("did not get unused adapter error when duplicate adapter was provided")
 		return
 	}
-	r, err = New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, wtps, wtos, adapter.New[string](story.AdapterEnd).Adapter(func(a []adapter.Value) (string, error) {
+	r, err = New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, wtps, wtos, adapter.New[string](adapter.End).Adapter(func(a []adapter.Value) (string, error) {
 		log.Info("end", "a", a)
 		str := wtpsf.Value(a[0])
 		log.Info("end", "s", str)
@@ -177,7 +177,7 @@ func TestCrazyTown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2, err := New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, adapter.New[string](story.AdapterEnd).Adapter(func(a []adapter.Value) (string, error) {
+	r2, err := New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, adapter.New[string](adapter.End).Adapter(func(a []adapter.Value) (string, error) {
 		str := wtbf.Value(a[0]) //*a[0].(*string)
 		//str := strings.Join(s, "_")
 		log.Info("end", "s", str)
@@ -237,7 +237,7 @@ func BenchmarkCrazy(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	r2, err := New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, adapter.New[string](story.AdapterEnd).Adapter(func(a []adapter.Value) (string, error) {
+	r2, err := New[types.Nil](store, p.AddTopic, stream.StaticProvider(testCryptKey), time.Second, s, ctxGlobal, wtb, wtg, wtr, adapter.New[string](adapter.End).Adapter(func(a []adapter.Value) (string, error) {
 		str := wtbf.Value(a[0])
 		//str := strings.Join(s, "_")
 		log.Info("end", "s", str)

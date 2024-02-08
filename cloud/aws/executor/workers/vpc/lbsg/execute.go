@@ -23,7 +23,7 @@ func Adapter(c *ec2.Client) adapter.Adapter {
 			extra = fmt.Sprintf("-%s", env.System.MachineName)
 		}
 		name := fmt.Sprintf("%s%s-lb", env.MachineName, extra)
-		sg, err = security.New(env.Name, name, v.Id, c)
+		sg, err = security.New(env.MachineName, name, v.Id, c)
 		if err != nil {
 			log.WithError(err).Error("while creating new security group")
 			return

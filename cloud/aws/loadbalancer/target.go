@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	elbv2types "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
+	log "github.com/cantara/bragi/sbragi"
 
 	//"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
@@ -16,6 +17,7 @@ type Target struct {
 }
 
 func CreateTarget(tg TargetGroup, s string, elb *elbv2.Client) (t Target, err error) {
+	log.Trace("creating target", "tg", tg.ARN, "node", s)
 	_, err = elb.RegisterTargets(context.Background(), &elbv2.RegisterTargetsInput{
 		TargetGroupArn: aws.String(tg.ARN),
 		Targets: []elbv2types.TargetDescription{

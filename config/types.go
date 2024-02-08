@@ -92,14 +92,14 @@ type Service struct {
 	Definition  ServiceInfo `json:"definition"`
 }
 type Cluster struct {
-	Name        string                    `json:"name"`
-	MachineName string                    `json:"machine_name"`
-	Node        Node                      `json:"node"`
-	Services    []Service                 `json:"services"`
-	Size        int                       `json:"size"`
-	Internal    bool                      `json:"internal"`
-	Packages    map[string]schema.Package `json:"-"`
-	System      []Feature                 `json:"system,omitempty"`
+	Name        string             `json:"name"`
+	MachineName string             `json:"machine_name"`
+	Node        Node               `json:"node"`
+	Services    []Service          `json:"services"`
+	Size        int                `json:"size"`
+	Internal    bool               `json:"internal"`
+	Packages    map[string]Package `json:"-"`
+	System      []Feature          `json:"system,omitempty"`
 }
 
 func (c Cluster) HasFrontend() bool {

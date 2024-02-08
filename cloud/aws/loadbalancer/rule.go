@@ -63,7 +63,7 @@ func CreateRulePath(l Listener, tg TargetGroup, elb *elbv2.Client) (r Rule, err 
 	if err != nil {
 		return
 	}
-	path := fmt.Sprintf("/%s", r.targetGroup.UriPath)
+	path := fmt.Sprintf("/%s", r.targetGroup.Path)
 
 	result, err := elb.CreateRule(context.Background(), &elbv2.CreateRuleInput{
 		Actions: []elbv2types.Action{

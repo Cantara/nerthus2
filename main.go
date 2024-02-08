@@ -26,6 +26,7 @@ import (
 	"github.com/cantara/gober/discovery/local"
 	"github.com/cantara/gober/eventmap"
 	"github.com/cantara/gober/stream"
+	"github.com/cantara/gober/stream/event"
 	"github.com/cantara/gober/stream/event/store/inmemory"
 	"github.com/cantara/gober/stream/event/store/ondisk"
 	syncExt "github.com/cantara/gober/sync"
@@ -111,7 +112,7 @@ func main() {
 	cfg.RetryMode = amzaws.RetryModeAdaptive
 	cfg.RetryMaxAttempts = 5
 	e2, elb, rc, ac := ec2.NewFromConfig(cfg), elbv2.NewFromConfig(cfg), route53.NewFromConfig(cfg), acm.NewFromConfig(cfg)
-	d, err := workers.New(deploymentStream, p.AddTopic, os.Getenv("deployment.crypto.key"), e2, elb, rc, ac, ctx)
+	d, err := workers.New(deploymentStream, p.AddTopic, os.Getenv("deployment.crypto.key"), hostActions, e2, elb, rc, ac, ctx)
 	if err != nil {
 		log.WithError(err).Fatal("creating worker")
 	}
@@ -128,13 +129,21 @@ func main() {
 		log.WithError(err).Fatal("while initializing public key stream")
 	}
 	environments, err := eventmap.Init[environment](envStream, "environment", "v0.0.1",
-		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx, func(env *environment) {
+		stream.StaticProvider(log.RedactedString(os.Getenv("environments.static_key"))), ctx, func(t event.Type, env *environment) {
+			if t != event.Created {
+				return
+			}
+			if env.EnvName == "" {
+				return
+			}
+			log.Info("registered env", "name", env.EnvName)
 			env.lastExecute = time.AfterFunc(time.Minute*15, func() {
+				log.Info("-------timer executed new func--------")
 				_, err := GitCloneEnvironment(*env)
 				if log.WithError(err).Error("while cloning git repo during environment execution", "env", env.EnvName) {
 					return
 				}
-				go ExecuteEnv(env.EnvName, d.Provision)
+				ExecuteEnv(env.EnvName, d.Provision)
 			})
 		})
 	//TODO: If bootstrap add local users ssh key to map and add key on bootstrap
@@ -171,24 +180,7 @@ func main() {
 		log.WithError(err).Fatal("while initializing webserver")
 	}
 
-	serv.API().POST("/config/:env", func(c *gin.Context) {
-		name := c.Params.ByName("env")
-		env, err := environments.Get(name)
-		//if ok := environments.Exists(env); !ok {
-		if err != nil {
-			c.AbortWithStatus(404)
-			return
-		}
-		//_, err := GitCloneEnvironment(env, environments)
-		_, err = GitCloneEnvironment(env)
-		if err != nil {
-			log.WithError(err).Fatal("while cloning git repo during environment execution", "env", env)
-		}
-		env.lastExecute.Reset(time.Minute * 15)
-		go ExecuteEnv(env.EnvName, d.Provision)
-	})
-
-	serv.API().PUT("/config/:env", func(c *gin.Context) {
+	configEnv := func(c *gin.Context) {
 		name := c.Params.ByName("env")
 		env, err := environments.Get(name)
 		//if ok := environments.Exists(env); !ok {
@@ -220,7 +212,10 @@ func main() {
 				}
 			}
 		*/
-	})
+	}
+	serv.API().POST("/config/:env", configEnv)
+
+	serv.API().PUT("/config/:env", configEnv)
 
 	/*
 		serv.API().PUT("/config/:env/:sys", func(c *gin.Context) {
@@ -317,7 +312,7 @@ func main() {
 		})
 		auth.PUT("/ssh/:server", func(c *gin.Context) {
 			name := c.Params.ByName("server")
-			serv, err := server.GetServer(name, e2)
+			servs, err := server.GetServers(name, e2)
 			if err != nil {
 				if errors.Is(err, server.ErrServerNotFound) {
 					c.JSON(http.StatusNotFound, gin.H{"error": "server not found"})
@@ -327,7 +322,7 @@ func main() {
 				}
 				return
 			}
-			g, err := security.ById(serv.SecutityGroupId, e2)
+			g, err := security.ById(servs[0].SecutityGroupId, e2)
 			if err != nil {
 				log.WithError(err).Error("while getting server security group from aws")
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err})
@@ -377,14 +372,14 @@ func main() {
 			c.JSON(http.StatusOK, environments.Keys())
 		})
 
-		auth.PUT("/env/:name", func(c *gin.Context) {
+		auth.PUT("/env/:env", func(c *gin.Context) {
 			var env environment
 			err := c.MustBindWith(&env, binding.JSON)
 			if err != nil {
 				log.WithError(err).Debug("while binding json body from key put")
 				return
 			}
-			if env.EnvName != c.Params.ByName("name") {
+			if env.EnvName != c.Params.ByName("env") {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "name does not match name of env", "name": c.Params.ByName("name"), "env": env})
 				return
 			}
@@ -394,6 +389,7 @@ func main() {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "while storing env in map"})
 				return
 			}
+			configEnv(c)
 		})
 	}
 

@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/acm"
@@ -11,6 +12,7 @@ import (
 	"github.com/cantara/bragi/sbragi"
 	"github.com/cantara/gober/consensus"
 	"github.com/cantara/gober/stream"
+	"github.com/cantara/gober/sync"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/cert"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/repeatable"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/fairytale/story"
@@ -19,6 +21,8 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/lb"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/listener"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/node"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/node/cleanup"
+	"github.com/cantara/nerthus2/cloud/aws/executor/workers/node/deploy"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/rule"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/start"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/target"
@@ -29,6 +33,8 @@ import (
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/sn"
 	"github.com/cantara/nerthus2/cloud/aws/executor/workers/vpc/tg"
 	"github.com/cantara/nerthus2/config"
+	"github.com/cantara/nerthus2/message"
+	pconfig "github.com/cantara/nerthus2/probe/config"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -46,7 +52,7 @@ type provisioner struct {
 	r repeatable.Reader
 }
 
-func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, ac *acm.Client, ctx context.Context) (Provisioner, error) {
+func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, nodeActions sync.Map[chan message.Action], e2 *ec2.Client, elb *elbv2.Client, rc *route53.Client, ac *acm.Client, ctx context.Context) (Provisioner, error) {
 	vpcA := vpc.Adapter(e2)
 	keyA := key.Adapter(e2)
 	imgA := image.Adapter(e2)
@@ -57,6 +63,8 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 	tgA := tg.Adapter(elb)
 	sgA := sg.Adapter(e2)
 	nodeA := node.Adapter(e2)
+	deployA := deploy.Adapter(nodeActions, e2)
+	cleanupA := cleanup.Adapter(e2)
 	lbA := lb.Adapter(elb)
 	lsA := listener.Adapter(elb)
 	rA := rule.Adapter(elb)
@@ -67,7 +75,7 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 		Use fingerprints structs for adapters to define names and return values. This can then be imported and used for requirements and srict json matching
 	*/
 	s, err := story.Start("deploy").
-		LinkTo("vpc", "key", "image", "cert", "node", "rule", "lbsg", "tg", "lb", "sg").
+		LinkTo("vpc", "key", "image", "cert", "node", "rule", "lbsg", "tg", "lb", "sg", "deploy", "cleanup").
 		Id("vpc").Adapter(vpcA.Name()).LinkTo("lbsg", "sn", "ig", "tg", "sg").
 		Id("key").Adapter(keyA.Name()).LinkTo("node").
 		Id("image").Adapter(imgA.Name()).LinkTo("node").
@@ -77,7 +85,9 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 		Id("ig").Adapter(igA.Name()).LinkToEnd().
 		Id("tg").Adapter(tgA.Name()).LinkTo("rule", "target").
 		Id("sg").Adapter(sgA.Name()).LinkTo("node").
-		Id("node").Adapter(nodeA.Name()).LinkTo("target").
+		Id("node").Adapter(nodeA.Name()).LinkTo("target", "deploy", "cleanup").
+		Id("deploy").Adapter(deployA.Name()).LinkToEnd().
+		Id("cleanup").Adapter(cleanupA.Name()).LinkToEnd().
 		Id("lb").Adapter(lbA.Name()).LinkTo("listener").
 		Id("listener").Adapter(lsA.Name()).LinkTo("rule").
 		Id("rule").Adapter(rA.Name()).LinkToEnd().
@@ -85,7 +95,7 @@ func New(strm stream.Stream, cb consensus.ConsBuilderFunc, cryptoKey string, e2 
 	if err != nil {
 		return nil, err
 	}
-	r, err := repeatable.New[start.Environment](strm, cb, stream.StaticProvider(sbragi.RedactedString(cryptoKey)), time.Minute*5, s, ctx, start.Adapter, vpcA, keyA, imgA, certA, lbsgA, snA, igA, tgA, sgA, nodeA, lbA, lsA, rA, tA)
+	r, err := repeatable.New[pconfig.Environment](strm, cb, stream.StaticProvider(sbragi.RedactedString(cryptoKey)), time.Minute*5, s, ctx, start.Adapter, vpcA, keyA, imgA, certA, lbsgA, snA, igA, tgA, sgA, nodeA, deployA, cleanupA, lbA, lsA, rA, tA)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +115,12 @@ func (d provisioner) Status() map[string]map[string]repeatable.State {
 
 func (d provisioner) Provision(env config.Environment) {
 	for _, cluster := range env.System.Clusters {
-		p := start.Environment{
+		p := pconfig.Environment{
 			Name:        env.Name,
 			MachineName: env.MachineName,
 			NerthusURL:  env.NerthusURL,
 			VisualeURL:  env.VisualeURL,
-			System: start.System{
+			System: pconfig.System{
 				Name:          env.System.Name,
 				MachineName:   env.System.MachineName,
 				Domain:        env.System.Domain,
@@ -122,7 +132,7 @@ func (d provisioner) Provision(env config.Environment) {
 		}
 		b, err := json.Marshal(p)
 		sbragi.WithError(err).Fatal("json should not fail")
-		d.r.New(env.Name, b)
+		d.r.New(fmt.Sprintf("%s-%s-%s", env.MachineName, env.System.MachineName, cluster.MachineName), b)
 		sbragi.Info("new", "b", string(b))
 	}
 	/*

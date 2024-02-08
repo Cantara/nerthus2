@@ -30,6 +30,7 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 		}
 		for _, service := range env.System.Cluster.Services {
 			if service.Port == 0 {
+				log.Info("skipping creation of TG as port is 0", "service", service.Name)
 				continue
 			}
 			extra := extra
@@ -39,8 +40,14 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 			name := fmt.Sprintf("%s%s-tg", env.MachineName, extra)
 			path := strings.ReplaceAll(fmt.Sprintf("/%s/health", strings.Trim(service.Definition.APIPath, "/")), "//", "/")
 			var tg loadbalancer.TargetGroup
-			tg, err = loadbalancer.GetTargetGroup(name, path, service.Port, c)
+			log.Info("creating target group", "service", service.Name, "name", name, "path", path, "port", service.Port)
+			tg, err = loadbalancer.GetTargetGroup(name, c)
 			if err == nil {
+				if tg.Path != path || tg.Port != service.Port {
+					tg.Path = path
+					tg.Port = service.Port
+					tg.Update(c)
+				}
 				tgs = append(tgs, tg)
 				continue
 			}

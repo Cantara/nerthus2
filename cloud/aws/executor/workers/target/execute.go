@@ -22,8 +22,7 @@ func Adapter(c *elbv2.Client) adapter.Adapter {
 			for j, node := range nodes {
 				var t loadbalancer.Target
 				t, err = loadbalancer.CreateTarget(tg, node.Id, c)
-				log.WithError(err).Trace("while creating target", "node", node, "target_group", tg)
-				if err != nil {
+				if log.WithError(err).Trace("while creating target", "node", node, "target_group", tg) {
 					return
 				}
 				ts[off+j] = t

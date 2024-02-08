@@ -30,6 +30,7 @@ type Server struct {
 	VolumeId           string `json:"volume_id"`
 	NetworkInterfaceId string `json:"network_interface_id"`
 	SecutityGroupId    string
+	State              string
 	ami                ami.Image
 	key                key.Key
 	group              security.Group
@@ -39,7 +40,7 @@ func NewServer(name, cluster string, image ami.Image, key key.Key, group securit
 	return
 }
 
-func GetServer(name string, e2 *ec2.Client) (s Server, err error) {
+func GetServers(name string, e2 *ec2.Client) (s []Server, err error) {
 	result, err := e2.DescribeInstances(context.Background(), &ec2.DescribeInstancesInput{
 		Filters: []ec2types.Filter{
 			{
@@ -53,7 +54,7 @@ func GetServer(name string, e2 *ec2.Client) (s Server, err error) {
 	if err != nil {
 		return
 	}
-	if len(result.Reservations) < 1 {
+	if len(result.Reservations) == 0 {
 		err = fmt.Errorf("error: %w name=%s", ErrServerNotFound, name)
 		return
 	}
@@ -69,19 +70,22 @@ func GetServer(name string, e2 *ec2.Client) (s Server, err error) {
 			if len(instance.BlockDeviceMappings) < 1 || len(instance.NetworkInterfaces) < 1 {
 				continue
 			}
-			s = Server{
+			s = append(s, Server{
 				Name:               name,
 				Cluster:            vpc.Tag(instance.Tags, "Cluster"),
 				Id:                 aws.ToString(instance.InstanceId),
+				Type:               string(instance.InstanceType),
 				PublicDNS:          aws.ToString(instance.PublicDnsName),
 				VolumeId:           aws.ToString(instance.BlockDeviceMappings[0].Ebs.VolumeId),
 				NetworkInterfaceId: aws.ToString(instance.NetworkInterfaces[0].NetworkInterfaceId),
 				SecutityGroupId:    aws.ToString(instance.SecurityGroups[0].GroupId),
-			}
-			return
+				State:              string(instance.State.Name),
+			})
 		}
 	}
-	err = fmt.Errorf("error: %w, name=%s", ErrServerNotFound, name)
+	if len(s) == 0 {
+		err = fmt.Errorf("error: %w, name=%s", ErrServerNotFound, name)
+	}
 	return
 }
 
@@ -113,18 +117,27 @@ func NameAvailable(name string, e2 *ec2.Client) (available bool, err error) {
 }
 
 func Create(nodeNum int, node, cluster, system, env, iType, subnet, nerthusUrl, visualeUrl string, diskSize int, image ami.Image, key key.Key, group security.Group, e2 *ec2.Client) (Server, error) {
-	s, err := GetServer(node, e2)
+	servs, err := GetServers(node, e2) //Should probably remove this from here
 	if err != nil {
 		if !errors.Is(err, ErrServerNotFound) {
 			return Server{}, err
 		}
 		err = nil
 	} else {
-		log.Trace("Server already exists", "name", node)
-		return s, nil
+		var out *Server
+		for _, s := range servs {
+			if s.Type != iType && s.State == string(ec2types.InstanceStateNameRunning) {
+				continue
+			}
+			out = &s
+		}
+		if out != nil {
+			log.Trace("Server already exists", "name", node)
+			return *out, nil
+		}
 	}
 	// Specify the details of the instance that you want to create
-	s = Server{
+	s := Server{
 		Name:            node,
 		Cluster:         cluster,
 		ami:             image,
@@ -246,7 +259,6 @@ func (s *Server) Delete(e2 *ec2.Client) (err error) {
 	if err != nil {
 		return
 	}
-	err = s.WaitUntilTerminated(e2)
 	return
 }
 
