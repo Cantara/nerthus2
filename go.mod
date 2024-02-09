@@ -1,6 +1,6 @@
 module github.com/cantara/nerthus2
 
-go 1.22.0
+go 1.21.7
 
 require (
 	cuelang.org/go v0.7.0
@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.37.1
 	github.com/aws/smithy-go v1.19.0
 	github.com/cantara/bragi v0.8.0
-	github.com/cantara/gober v0.18.7
+	github.com/cantara/gober v0.18.8
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -99,6 +99,7 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
