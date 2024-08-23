@@ -6,7 +6,7 @@ require (
 	cuelang.org/go v0.10.0
 	github.com/apenella/go-ansible v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.30.4
-	github.com/aws/aws-sdk-go-v2/config v1.27.29
+	github.com/aws/aws-sdk-go-v2/config v1.27.30
 	github.com/aws/aws-sdk-go-v2/service/acm v1.28.6
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.176.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.34.2
