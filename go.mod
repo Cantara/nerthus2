@@ -6,13 +6,13 @@ require (
 	cuelang.org/go v0.11.0
 	github.com/apenella/go-ansible v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.32.7
-	github.com/aws/aws-sdk-go-v2/config v1.28.7
-	github.com/aws/aws-sdk-go-v2/service/acm v1.30.8
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.1
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.43.2
+	github.com/aws/aws-sdk-go-v2/config v1.28.8
+	github.com/aws/aws-sdk-go-v2/service/acm v1.30.9
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.2
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.43.3
 	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3
-	github.com/aws/aws-sdk-go-v2/service/rds v1.93.2
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.4
+	github.com/aws/aws-sdk-go-v2/service/rds v1.93.3
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.47.0
 	github.com/aws/smithy-go v1.22.1
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.8
@@ -33,7 +33,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df // indirect
 	github.com/apenella/go-common-utils/error v0.0.0-20220913191136-86daaa87e7df // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.48 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.49 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.22 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.26 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.26 // indirect
@@ -42,7 +42,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.4 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
