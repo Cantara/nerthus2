@@ -5,14 +5,14 @@ go 1.22.2
 require (
 	cuelang.org/go v0.11.0
 	github.com/apenella/go-ansible v1.3.0
-	github.com/aws/aws-sdk-go-v2 v1.32.8
-	github.com/aws/aws-sdk-go-v2/config v1.28.11
-	github.com/aws/aws-sdk-go-v2/service/acm v1.30.11
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.199.1
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.43.5
-	github.com/aws/aws-sdk-go-v2/service/iam v1.38.5
-	github.com/aws/aws-sdk-go-v2/service/rds v1.93.5
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.48.0
+	github.com/aws/aws-sdk-go-v2 v1.33.0
+	github.com/aws/aws-sdk-go-v2/config v1.29.0
+	github.com/aws/aws-sdk-go-v2/service/acm v1.30.12
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.199.2
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.43.6
+	github.com/aws/aws-sdk-go-v2/service/iam v1.38.6
+	github.com/aws/aws-sdk-go-v2/service/rds v1.93.6
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.48.1
 	github.com/aws/smithy-go v1.22.1
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.8
@@ -33,16 +33,16 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df // indirect
 	github.com/apenella/go-common-utils/error v0.0.0-20220913191136-86daaa87e7df // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.52 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.27 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.27 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.53 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.24 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.28 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.28 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.24.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.24.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.8 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
