@@ -6,13 +6,13 @@ require (
 	cuelang.org/go v0.12.0
 	github.com/apenella/go-ansible v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
-	github.com/aws/aws-sdk-go-v2/config v1.29.12
-	github.com/aws/aws-sdk-go-v2/service/acm v1.31.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.0
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.45.0
-	github.com/aws/aws-sdk-go-v2/service/iam v1.41.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.94.2
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.50.0
+	github.com/aws/aws-sdk-go-v2/config v1.29.13
+	github.com/aws/aws-sdk-go-v2/service/acm v1.31.2
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.1
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.45.1
+	github.com/aws/aws-sdk-go-v2/service/iam v1.41.1
+	github.com/aws/aws-sdk-go-v2/service/rds v1.94.3
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.51.0
 	github.com/aws/smithy-go v1.22.3
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.8
