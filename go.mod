@@ -23,7 +23,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/microsoft/go-mssqldb v1.8.0
 	github.com/modern-go/reflect2 v1.0.2
-	go.mongodb.org/mongo-driver v1.17.3
+	go.mongodb.org/mongo-driver v1.17.4
 )
 
 require (
