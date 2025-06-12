@@ -21,7 +21,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/joho/godotenv v1.5.1
 	github.com/json-iterator/go v1.1.12
-	github.com/microsoft/go-mssqldb v1.8.0
+	github.com/microsoft/go-mssqldb v1.8.2
 	github.com/modern-go/reflect2 v1.0.2
 	go.mongodb.org/mongo-driver v1.17.4
 )
