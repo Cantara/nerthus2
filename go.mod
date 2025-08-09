@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	cuelang.org/go v0.13.2
-	github.com/apenella/go-ansible v1.3.0
+	github.com/apenella/go-ansible/v2 v2.2.0
 	github.com/aws/aws-sdk-go-v2 v1.37.2
 	github.com/aws/aws-sdk-go-v2/config v1.30.3
 	github.com/aws/aws-sdk-go-v2/service/acm v1.35.0
