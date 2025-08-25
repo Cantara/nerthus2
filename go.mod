@@ -3,7 +3,7 @@ module github.com/cantara/nerthus2
 go 1.22.2
 
 require (
-	cuelang.org/go v0.13.2
+	cuelang.org/go v0.14.1
 	github.com/apenella/go-ansible v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/aws/aws-sdk-go-v2/config v1.31.2
