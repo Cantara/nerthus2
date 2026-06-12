@@ -7,10 +7,10 @@ require (
 	github.com/apenella/go-ansible v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
-	github.com/aws/aws-sdk-go-v2/service/acm v1.39.6
+	github.com/aws/aws-sdk-go-v2/service/acm v1.40.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.55.4
-	github.com/aws/aws-sdk-go-v2/service/iam v1.54.4
+	github.com/aws/aws-sdk-go-v2/service/iam v1.54.5
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.2
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.63.3
 	github.com/aws/smithy-go v1.27.1
