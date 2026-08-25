@@ -5,15 +5,15 @@ go 1.25.7
 require (
 	cuelang.org/go v0.15.4
 	github.com/apenella/go-ansible v1.3.0
-	github.com/aws/aws-sdk-go-v2 v1.43.7
-	github.com/aws/aws-sdk-go-v2/config v1.32.38
-	github.com/aws/aws-sdk-go-v2/service/acm v1.44.2
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.322.0
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.58.8
-	github.com/aws/aws-sdk-go-v2/service/iam v1.59.2
-	github.com/aws/aws-sdk-go-v2/service/rds v1.124.4
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.65.9
-	github.com/aws/smithy-go v1.27.8
+	github.com/aws/aws-sdk-go-v2 v1.43.8
+	github.com/aws/aws-sdk-go-v2/config v1.32.39
+	github.com/aws/aws-sdk-go-v2/service/acm v1.44.3
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.323.0
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.58.9
+	github.com/aws/aws-sdk-go-v2/service/iam v1.59.3
+	github.com/aws/aws-sdk-go-v2/service/rds v1.124.5
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.65.10
+	github.com/aws/smithy-go v1.27.10
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.8
 	github.com/gin-gonic/gin v1.12.0
@@ -33,17 +33,17 @@ require (
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/apenella/go-common-utils/data v0.0.0-20220913191136-86daaa87e7df // indirect
 	github.com/apenella/go-common-utils/error v0.0.0-20220913191136-86daaa87e7df // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.37 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.38 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.38 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.38 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.39 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.38 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.5.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.33.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.45.7 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.38 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.39 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.39 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.39 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.40 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.39 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.5.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.33.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.45.8 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
