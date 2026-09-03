@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.2
 	github.com/aws/aws-sdk-go-v2/service/acm v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.328.0
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.61.0
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.61.1
 	github.com/aws/aws-sdk-go-v2/service/iam v1.62.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.127.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.68.0
