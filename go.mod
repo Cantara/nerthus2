@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.64.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.130.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.70.2
-	github.com/aws/smithy-go v1.28.1
+	github.com/aws/smithy-go v1.28.4
 	github.com/cantara/bragi v0.8.0
 	github.com/cantara/gober v0.18.8
 	github.com/gin-gonic/gin v1.12.0
